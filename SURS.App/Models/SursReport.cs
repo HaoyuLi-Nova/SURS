@@ -5,6 +5,19 @@ namespace SURS.App.Models
 {
     public class SursReport : ObservableObject
     {
+        // Image Paths
+        public ObservableCollection<string> ImagePaths { get; } = new ObservableCollection<string>();
+
+        // Patient Info & Header
+        public string HospitalName { get; set; } = "首都医科大学附属北京妇产医院";
+        public string HospitalBranch { get; set; } = string.Empty; // East/West
+        public string LastMenstrualPeriod { get; set; } = string.Empty;
+
+        // Uterus (Form 1)
+        public Uterus Uterus { get; } = new Uterus();
+        public Endometrium Endometrium { get; } = new Endometrium();
+        public UterineCavity Cavity { get; } = new UterineCavity();
+
         // 卵巢正常/异常
         private bool _isNormal;
         public bool IsNormal
@@ -65,6 +78,66 @@ namespace SURS.App.Models
             get => _oRadsScore;
             set => SetProperty(ref _oRadsScore, value);
         }
+        
+        // Form 1 Conclusion
+        public string UterusDescription { get; set; } = string.Empty;
+        public string EndometriumDiagnosis { get; set; } = string.Empty; // Hyperplasia, Polyp, Cancer, Submucosal Myoma, Other
+        
+        // Footer
+        public string Remarks { get; set; } = string.Empty;
+        public string Typist { get; set; } = string.Empty;
+        public string Diagnostician { get; set; } = string.Empty;
+        public System.DateTime ReportDate { get; set; } = System.DateTime.Now;
+    }
+
+    public class Uterus : ObservableObject
+    {
+        public string Position { get; set; } = string.Empty; // Anteverted, Retroverted, Mid
+        public double Length { get; set; }
+        public double APDiameter { get; set; }
+        public double Width { get; set; }
+        public double CervixLength { get; set; }
+        public double CervixAP { get; set; }
+        
+        public string MyometriumEcho { get; set; } = string.Empty; // Uniform, Non-uniform
+        public string MyometriumThickening { get; set; } = string.Empty; // Focal, Diffuse
+        public string NoduleSizeLocation { get; set; } = string.Empty;
+    }
+
+    public class Endometrium : ObservableObject
+    {
+        public double Thickness { get; set; }
+        public bool CannotMeasure { get; set; }
+        public string EchoType { get; set; } = string.Empty; // Low, Iso, High
+        public string EchoUniformity { get; set; } = string.Empty; // Uniform, Non-uniform
+        public string CysticArea { get; set; } = string.Empty; // None, Regular, Irregular
+        public string Midline { get; set; } = string.Empty; // Linear, Non-linear, Irregular, Not Visible
+        public string JunctionalZone { get; set; } = string.Empty; // Regular, Irregular, Interrupted, Not Visible
+        
+        public bool HasFlow { get; set; }
+        public string FlowAmount { get; set; } = string.Empty; // Scanty, Moderate, Abundant
+        public string FlowPattern { get; set; } = string.Empty; 
+    }
+
+    public class UterineCavity : ObservableObject
+    {
+        public bool HasLesion { get; set; }
+        public double Length { get; set; }
+        public double APDiameter { get; set; }
+        public double Width { get; set; }
+        public string Location { get; set; } = string.Empty;
+        
+        public bool IsPedunculated { get; set; } // Calculated from Base/Max ratio
+        public double BaseDiameter { get; set; }
+        public double MaxTransverseDiameter { get; set; }
+        
+        public string EchoType { get; set; } = string.Empty;
+        public string EchoUniformity { get; set; } = string.Empty;
+        public string Boundary { get; set; } = string.Empty;
+        
+        public bool HasFlow { get; set; }
+        public string FlowAmount { get; set; } = string.Empty;
+        public string FlowPattern { get; set; } = string.Empty;
     }
 
     public class Ovary : ObservableObject

@@ -16,6 +16,7 @@ namespace SURS.App.ViewModels
         public SursReport Report { get; }
 
         public RelayCommand ExportPdfCommand { get; }
+        public RelayCommand SelectImageCommand { get; }
 
         public MainViewModel()
         {
@@ -24,6 +25,7 @@ namespace SURS.App.ViewModels
             InitializeData();
 
             ExportPdfCommand = new RelayCommand(ExportPdf);
+            SelectImageCommand = new RelayCommand(SelectImage);
         }
 
         private void InitializeData()
@@ -37,6 +39,26 @@ namespace SURS.App.ViewModels
             Report.FluidLocations.Add(new FluidLocation { Name = "右髂窝" });
             Report.FluidLocations.Add(new FluidLocation { Name = "肝肾间隙" });
             Report.FluidLocations.Add(new FluidLocation { Name = "脾肾间隙" });
+        }
+
+        private void SelectImage()
+        {
+            var dialog = new OpenFileDialog
+            {
+                Filter = "Image Files (*.jpg;*.jpeg;*.png;*.bmp)|*.jpg;*.jpeg;*.png;*.bmp",
+                Multiselect = true
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                foreach (var file in dialog.FileNames)
+                {
+                    if (Report.ImagePaths.Count < 3)
+                    {
+                        Report.ImagePaths.Add(file);
+                    }
+                }
+            }
         }
 
         private void ExportPdf()
