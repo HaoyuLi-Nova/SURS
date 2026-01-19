@@ -9,9 +9,89 @@ namespace SURS.App.Models
         public ObservableCollection<string> ImagePaths { get; } = new ObservableCollection<string>();
 
         // Patient Info & Header
-        public string HospitalName { get; set; } = "首都医科大学附属北京妇产医院";
-        public string HospitalBranch { get; set; } = string.Empty; // East/West
-        public string LastMenstrualPeriod { get; set; } = string.Empty;
+        private string _hospitalName = "首都医科大学附属北京妇产医院";
+        public string HospitalName 
+        { 
+            get => _hospitalName;
+            set => SetProperty(ref _hospitalName, value);
+        }
+
+        private string _patientName = string.Empty;
+        public string PatientName 
+        { 
+            get => _patientName;
+            set => SetProperty(ref _patientName, value);
+        }
+
+        private string _registrationNo = string.Empty;
+        public string RegistrationNo 
+        { 
+            get => _registrationNo;
+            set => SetProperty(ref _registrationNo, value);
+        }
+
+        private string _gender = "女";
+        public string Gender 
+        { 
+            get => _gender;
+            set => SetProperty(ref _gender, value);
+        }
+
+        private string _age = string.Empty;
+        public string Age 
+        { 
+            get => _age;
+            set => SetProperty(ref _age, value);
+        }
+
+        private string _department = string.Empty;
+        public string Department 
+        { 
+            get => _department;
+            set => SetProperty(ref _department, value);
+        }
+
+        private string _outpatientNo = string.Empty;
+        public string OutpatientNo 
+        { 
+            get => _outpatientNo;
+            set => SetProperty(ref _outpatientNo, value);
+        }
+
+        private string _inpatientNo = string.Empty;
+        public string InpatientNo 
+        { 
+            get => _inpatientNo;
+            set => SetProperty(ref _inpatientNo, value);
+        }
+
+        private string _examItem = "经阴道彩色多普勒超声检查";
+        public string ExamItem 
+        { 
+            get => _examItem;
+            set => SetProperty(ref _examItem, value);
+        }
+
+        private bool _isEastBranch;
+        public bool IsEastBranch 
+        { 
+            get => _isEastBranch;
+            set => SetProperty(ref _isEastBranch, value);
+        }
+
+        private bool _isWestBranch;
+        public bool IsWestBranch 
+        { 
+            get => _isWestBranch;
+            set => SetProperty(ref _isWestBranch, value);
+        }
+        
+        private System.DateTime? _lastMenstrualPeriod;
+        public System.DateTime? LastMenstrualPeriod 
+        {
+            get => _lastMenstrualPeriod;
+            set => SetProperty(ref _lastMenstrualPeriod, value);
+        }
 
         // Uterus (Form 1)
         public Uterus Uterus { get; } = new Uterus();
@@ -19,17 +99,41 @@ namespace SURS.App.Models
         public UterineCavity Cavity { get; } = new UterineCavity();
 
         // 卵巢正常/异常
-        private bool _isNormal;
-        public bool IsNormal
+        private string _ovaryEvaluation = string.Empty;
+        public string OvaryEvaluation
         {
-            get => _isNormal;
-            set => SetProperty(ref _isNormal, value);
+            get => _ovaryEvaluation;
+            set => SetProperty(ref _ovaryEvaluation, value);
+        }
+        
+        public bool IsOvaryNormal
+        {
+            get => OvaryEvaluation == "正常";
+            set
+            {
+                if (!value) return;
+                OvaryEvaluation = "正常";
+                OnPropertyChanged(nameof(IsOvaryNormal));
+                OnPropertyChanged(nameof(IsOvaryAbnormal));
+            }
+        }
+        
+        public bool IsOvaryAbnormal
+        {
+            get => OvaryEvaluation == "异常";
+            set
+            {
+                if (!value) return;
+                OvaryEvaluation = "异常";
+                OnPropertyChanged(nameof(IsOvaryNormal));
+                OnPropertyChanged(nameof(IsOvaryAbnormal));
+            }
         }
 
         public Ovary LeftOvary { get; } = new Ovary("Left");
         public Ovary RightOvary { get; } = new Ovary("Right");
 
-        // Findings Categories (Checkboxes in the form)
+        // Findings Categories (Checkboxes in the form) - 异常卵巢选项（多选）
         private bool _hasUnilocularCyst;
         public bool HasUnilocularCyst
         {
@@ -63,13 +167,47 @@ namespace SURS.App.Models
         public SolidMass SolidMass { get; } = new SolidMass();
 
         // Fluid
-        private bool _hasFluid;
+        private string _fluidStatus = string.Empty;
+        public string FluidStatus
+        {
+            get => _fluidStatus;
+            set => SetProperty(ref _fluidStatus, value);
+        }
+        
+        public bool HasNoFluid
+        {
+            get => FluidStatus == "无";
+            set
+            {
+                if (value) FluidStatus = "无";
+                OnPropertyChanged();
+            }
+        }
+        
         public bool HasFluid
         {
-            get => _hasFluid;
-            set => SetProperty(ref _hasFluid, value);
+            get => FluidStatus == "有";
+            set
+            {
+                if (value) FluidStatus = "有";
+                OnPropertyChanged();
+            }
         }
         public ObservableCollection<FluidLocation> FluidLocations { get; } = new ObservableCollection<FluidLocation>();
+        
+        private bool _hasFluidOther;
+        public bool HasFluidOther 
+        { 
+            get => _hasFluidOther;
+            set => SetProperty(ref _hasFluidOther, value);
+        }
+
+        private string _fluidOtherLocation = string.Empty;
+        public string FluidOtherLocation 
+        { 
+            get => _fluidOtherLocation;
+            set => SetProperty(ref _fluidOtherLocation, value);
+        }
 
         // Conclusion
         private string _oRadsScore = string.Empty;
@@ -80,64 +218,512 @@ namespace SURS.App.Models
         }
         
         // Form 1 Conclusion
-        public string UterusDescription { get; set; } = string.Empty;
-        public string EndometriumDiagnosis { get; set; } = string.Empty; // Hyperplasia, Polyp, Cancer, Submucosal Myoma, Other
+        private string _uterusDescription = string.Empty;
+        public string UterusDescription 
+        { 
+            get => _uterusDescription;
+            set => SetProperty(ref _uterusDescription, value);
+        }
         
-        // Footer
-        public string Remarks { get; set; } = string.Empty;
-        public string Typist { get; set; } = string.Empty;
-        public string Diagnostician { get; set; } = string.Empty;
-        public System.DateTime ReportDate { get; set; } = System.DateTime.Now;
+        // Endometrium Diagnosis (Multi-select)
+        private bool _isEndoHyperplasia;
+        public bool IsEndoHyperplasia 
+        { 
+            get => _isEndoHyperplasia;
+            set => SetProperty(ref _isEndoHyperplasia, value);
+        }
+
+        private bool _isEndoPolyp;
+        public bool IsEndoPolyp 
+        { 
+            get => _isEndoPolyp;
+            set => SetProperty(ref _isEndoPolyp, value);
+        }
+
+        private bool _isEndoCancer;
+        public bool IsEndoCancer 
+        { 
+            get => _isEndoCancer;
+            set => SetProperty(ref _isEndoCancer, value);
+        }
+
+        private bool _isSubmucosalMyoma;
+        public bool IsSubmucosalMyoma 
+        { 
+            get => _isSubmucosalMyoma;
+            set => SetProperty(ref _isSubmucosalMyoma, value);
+        }
+
+        private bool _isEndoOther;
+        public bool IsEndoOther 
+        { 
+            get => _isEndoOther;
+            set => SetProperty(ref _isEndoOther, value);
+        }
+
+        private string _endoOtherText = string.Empty;
+        public string EndoOtherText 
+        { 
+            get => _endoOtherText;
+            set => SetProperty(ref _endoOtherText, value);
+        }
+
+        // O-RADS分级
+        private string _oRadsLevel = string.Empty;
+        public string ORadsLevel
+        {
+            get => _oRadsLevel;
+            set => SetProperty(ref _oRadsLevel, value);
+        }
+
+        // Footer - 报告签署
+        private string _remarks = string.Empty;
+        public string Remarks 
+        { 
+            get => _remarks;
+            set => SetProperty(ref _remarks, value);
+        }
+
+        private string _typist = string.Empty;
+        public string Typist 
+        { 
+            get => _typist;
+            set => SetProperty(ref _typist, value);
+        }
+
+        private string _diagnostician = string.Empty;
+        public string Diagnostician 
+        { 
+            get => _diagnostician;
+            set => SetProperty(ref _diagnostician, value);
+        }
+        
+        private System.DateTime _reportDate = System.DateTime.Now;
+        public System.DateTime ReportDate
+        {
+            get => _reportDate;
+            set => SetProperty(ref _reportDate, value);
+        }
     }
 
     public class Uterus : ObservableObject
     {
-        public string Position { get; set; } = string.Empty; // Anteverted, Retroverted, Mid
-        public double Length { get; set; }
-        public double APDiameter { get; set; }
-        public double Width { get; set; }
-        public double CervixLength { get; set; }
-        public double CervixAP { get; set; }
+        private string _position = string.Empty;
+        public string Position 
+        { 
+            get => _position;
+            set => SetProperty(ref _position, value);
+        }
+
+        private double _length;
+        public double Length 
+        { 
+            get => _length;
+            set => SetProperty(ref _length, value);
+        }
+
+        private double _apDiameter;
+        public double APDiameter 
+        { 
+            get => _apDiameter;
+            set => SetProperty(ref _apDiameter, value);
+        }
+
+        private double _width;
+        public double Width 
+        { 
+            get => _width;
+            set => SetProperty(ref _width, value);
+        }
+
+        private double _cervixLength;
+        public double CervixLength 
+        { 
+            get => _cervixLength;
+            set => SetProperty(ref _cervixLength, value);
+        }
+
+        private double _cervixAP;
+        public double CervixAP 
+        { 
+            get => _cervixAP;
+            set => SetProperty(ref _cervixAP, value);
+        }
         
-        public string MyometriumEcho { get; set; } = string.Empty; // Uniform, Non-uniform
-        public string MyometriumThickening { get; set; } = string.Empty; // Focal, Diffuse
-        public string NoduleSizeLocation { get; set; } = string.Empty;
+        private string _myometriumEcho = string.Empty;
+        public string MyometriumEcho 
+        { 
+            get => _myometriumEcho;
+            set => SetProperty(ref _myometriumEcho, value);
+        }
+
+        private bool _myometriumThickeningFocal;
+        public bool MyometriumThickeningFocal 
+        { 
+            get => _myometriumThickeningFocal;
+            set => SetProperty(ref _myometriumThickeningFocal, value);
+        }
+
+        private bool _myometriumThickeningDiffuse;
+        public bool MyometriumThickeningDiffuse 
+        { 
+            get => _myometriumThickeningDiffuse;
+            set => SetProperty(ref _myometriumThickeningDiffuse, value);
+        }
+
+        private bool _myometriumThickeningNodule;
+        public bool MyometriumThickeningNodule 
+        { 
+            get => _myometriumThickeningNodule;
+            set => SetProperty(ref _myometriumThickeningNodule, value);
+        }
+
+        // Nodule Details
+        private string _noduleCount = string.Empty;
+        public string NoduleCount 
+        { 
+            get => _noduleCount;
+            set => SetProperty(ref _noduleCount, value);
+        }
+
+        private string _noduleLocation = string.Empty;
+        public string NoduleLocation 
+        { 
+            get => _noduleLocation;
+            set => SetProperty(ref _noduleLocation, value);
+        }
+
+        private string _noduleType = string.Empty;
+        public string NoduleType 
+        { 
+            get => _noduleType;
+            set => SetProperty(ref _noduleType, value);
+        }
+
+        private double _noduleLength;
+        public double NoduleLength 
+        { 
+            get => _noduleLength;
+            set => SetProperty(ref _noduleLength, value);
+        }
+
+        private double _noduleWidth;
+        public double NoduleWidth 
+        { 
+            get => _noduleWidth;
+            set => SetProperty(ref _noduleWidth, value);
+        }
+
+        private double _noduleHeight;
+        public double NoduleHeight 
+        { 
+            get => _noduleHeight;
+            set => SetProperty(ref _noduleHeight, value);
+        }
+
+        private string _noduleEcho = string.Empty;
+        public string NoduleEcho 
+        { 
+            get => _noduleEcho;
+            set => SetProperty(ref _noduleEcho, value);
+        }
+
+        private string _noduleBoundary = string.Empty;
+        public string NoduleBoundary 
+        { 
+            get => _noduleBoundary;
+            set => SetProperty(ref _noduleBoundary, value);
+        }
+
+        private string _noduleSizeLocation = string.Empty; // Legacy, kept for compatibility if needed, but we will likely remove usage
+        public string NoduleSizeLocation 
+        { 
+            get => _noduleSizeLocation;
+            set => SetProperty(ref _noduleSizeLocation, value);
+        }
     }
 
     public class Endometrium : ObservableObject
     {
-        public double Thickness { get; set; }
-        public bool CannotMeasure { get; set; }
-        public string EchoType { get; set; } = string.Empty; // Low, Iso, High
-        public string EchoUniformity { get; set; } = string.Empty; // Uniform, Non-uniform
-        public string CysticArea { get; set; } = string.Empty; // None, Regular, Irregular
-        public string Midline { get; set; } = string.Empty; // Linear, Non-linear, Irregular, Not Visible
-        public string JunctionalZone { get; set; } = string.Empty; // Regular, Irregular, Interrupted, Not Visible
+        private double _thickness;
+        public double Thickness 
+        { 
+            get => _thickness;
+            set => SetProperty(ref _thickness, value);
+        }
+
+        private bool _cannotMeasure;
+        public bool CannotMeasure 
+        { 
+            get => _cannotMeasure;
+            set
+            {
+                if (SetProperty(ref _cannotMeasure, value) && value)
+                {
+                    Thickness = 0;
+                }
+            }
+        }
+
+        private string _echoType = string.Empty;
+        public string EchoType 
+        { 
+            get => _echoType;
+            set => SetProperty(ref _echoType, value);
+        }
+
+        private bool _echoUniform;
+        public bool EchoUniform 
+        { 
+            get => _echoUniform;
+            set
+            {
+                if (SetProperty(ref _echoUniform, value) && value)
+                {
+                    if (EchoNonUniform) EchoNonUniform = false;
+                    NonUniformNoCyst = false;
+                    NonUniformRegularCyst = false;
+                    NonUniformIrregularCyst = false;
+                }
+            }
+        }
+
+        private bool _echoNonUniform;
+        public bool EchoNonUniform 
+        { 
+            get => _echoNonUniform;
+            set
+            {
+                if (SetProperty(ref _echoNonUniform, value))
+                {
+                    if (value)
+                    {
+                        if (EchoUniform) EchoUniform = false;
+                    }
+                    else
+                    {
+                        NonUniformNoCyst = false;
+                        NonUniformRegularCyst = false;
+                        NonUniformIrregularCyst = false;
+                    }
+                }
+            }
+        }
+
+        private bool _nonUniformNoCyst;
+        public bool NonUniformNoCyst 
+        { 
+            get => _nonUniformNoCyst;
+            set => SetProperty(ref _nonUniformNoCyst, value);
+        }
+
+        private bool _nonUniformRegularCyst;
+        public bool NonUniformRegularCyst 
+        { 
+            get => _nonUniformRegularCyst;
+            set => SetProperty(ref _nonUniformRegularCyst, value);
+        }
+
+        private bool _nonUniformIrregularCyst;
+        public bool NonUniformIrregularCyst 
+        { 
+            get => _nonUniformIrregularCyst;
+            set => SetProperty(ref _nonUniformIrregularCyst, value);
+        }
+
+        private string _midline = string.Empty;
+        public string Midline 
+        { 
+            get => _midline;
+            set => SetProperty(ref _midline, value);
+        }
+
+        private string _junctionalZone = string.Empty;
+        public string JunctionalZone 
+        { 
+            get => _junctionalZone;
+            set => SetProperty(ref _junctionalZone, value);
+        }
         
-        public bool HasFlow { get; set; }
-        public string FlowAmount { get; set; } = string.Empty; // Scanty, Moderate, Abundant
-        public string FlowPattern { get; set; } = string.Empty; 
+        private bool _hasNoFlow;
+        public bool HasNoFlow 
+        { 
+            get => _hasNoFlow;
+            set
+            {
+                if (SetProperty(ref _hasNoFlow, value) && value)
+                {
+                    if (HasFlow) HasFlow = false;
+                    FlowAmount = string.Empty;
+                    FlowPattern = string.Empty;
+                }
+            }
+        }
+
+        private bool _hasFlow;
+        public bool HasFlow 
+        { 
+            get => _hasFlow;
+            set
+            {
+                if (SetProperty(ref _hasFlow, value))
+                {
+                    if (value)
+                    {
+                        if (HasNoFlow) HasNoFlow = false;
+                    }
+                    else
+                    {
+                        FlowAmount = string.Empty;
+                        FlowPattern = string.Empty;
+                    }
+                }
+            }
+        }
+
+        private string _flowAmount = string.Empty;
+        public string FlowAmount 
+        { 
+            get => _flowAmount;
+            set => SetProperty(ref _flowAmount, value);
+        }
+
+        private string _flowPattern = string.Empty;
+        public string FlowPattern 
+        { 
+            get => _flowPattern;
+            set => SetProperty(ref _flowPattern, value);
+        }
     }
 
     public class UterineCavity : ObservableObject
     {
-        public bool HasLesion { get; set; }
-        public double Length { get; set; }
-        public double APDiameter { get; set; }
-        public double Width { get; set; }
-        public string Location { get; set; } = string.Empty;
+        private bool _hasLesion;
+        public bool HasLesion 
+        { 
+            get => _hasLesion;
+            set => SetProperty(ref _hasLesion, value);
+        }
+
+        private double _length;
+        public double Length 
+        { 
+            get => _length;
+            set => SetProperty(ref _length, value);
+        }
+
+        private double _apDiameter;
+        public double APDiameter 
+        { 
+            get => _apDiameter;
+            set => SetProperty(ref _apDiameter, value);
+        }
+
+        private double _width;
+        public double Width 
+        { 
+            get => _width;
+            set => SetProperty(ref _width, value);
+        }
+
+        private string _location = string.Empty;
+        public string Location 
+        { 
+            get => _location;
+            set => SetProperty(ref _location, value);
+        }
         
-        public bool IsPedunculated { get; set; } // Calculated from Base/Max ratio
-        public double BaseDiameter { get; set; }
-        public double MaxTransverseDiameter { get; set; }
+        private bool _isPedunculated;
+        public bool IsPedunculated 
+        { 
+            get => _isPedunculated;
+            set => SetProperty(ref _isPedunculated, value);
+        }
+
+        private double _baseDiameter;
+        public double BaseDiameter 
+        { 
+            get => _baseDiameter;
+            set => SetProperty(ref _baseDiameter, value);
+        }
+
+        private double _maxTransverseDiameter;
+        public double MaxTransverseDiameter 
+        { 
+            get => _maxTransverseDiameter;
+            set => SetProperty(ref _maxTransverseDiameter, value);
+        }
         
-        public string EchoType { get; set; } = string.Empty;
-        public string EchoUniformity { get; set; } = string.Empty;
-        public string Boundary { get; set; } = string.Empty;
+        private string _echoType = string.Empty;
+        public string EchoType 
+        { 
+            get => _echoType;
+            set => SetProperty(ref _echoType, value);
+        }
+
+        private string _echoUniformity = string.Empty;
+        public string EchoUniformity 
+        { 
+            get => _echoUniformity;
+            set => SetProperty(ref _echoUniformity, value);
+        }
+
+        private string _boundary = string.Empty;
+        public string Boundary 
+        { 
+            get => _boundary;
+            set => SetProperty(ref _boundary, value);
+        }
         
-        public bool HasFlow { get; set; }
-        public string FlowAmount { get; set; } = string.Empty;
-        public string FlowPattern { get; set; } = string.Empty;
+        private bool _hasNoFlow;
+        public bool HasNoFlow 
+        { 
+            get => _hasNoFlow;
+            set
+            {
+                if (SetProperty(ref _hasNoFlow, value) && value)
+                {
+                    if (HasFlow) HasFlow = false;
+                    FlowAmount = string.Empty;
+                    FlowPattern = string.Empty;
+                }
+            }
+        }
+
+        private bool _hasFlow;
+        public bool HasFlow 
+        { 
+            get => _hasFlow;
+            set
+            {
+                if (SetProperty(ref _hasFlow, value))
+                {
+                    if (value)
+                    {
+                        if (HasNoFlow) HasNoFlow = false;
+                    }
+                    else
+                    {
+                        FlowAmount = string.Empty;
+                        FlowPattern = string.Empty;
+                    }
+                }
+            }
+        }
+
+        private string _flowAmount = string.Empty;
+        public string FlowAmount 
+        { 
+            get => _flowAmount;
+            set => SetProperty(ref _flowAmount, value);
+        }
+
+        private string _flowPattern = string.Empty;
+        public string FlowPattern 
+        { 
+            get => _flowPattern;
+            set => SetProperty(ref _flowPattern, value);
+        }
     }
 
     public class Ovary : ObservableObject
@@ -215,22 +801,22 @@ namespace SURS.App.Models
             set => SetProperty(ref _location, value);
         }
 
-        private string _boundary = string.Empty; // 规则/不规则
-        public string Boundary
+        protected string _boundary = string.Empty; // 规则/不规则
+        public virtual string Boundary
         {
             get => _boundary;
             set => SetProperty(ref _boundary, value);
         }
 
-        private string _shadow = string.Empty; // 有/无
-        public string Shadow
+        protected string _shadow = string.Empty; // 有/无
+        public virtual string Shadow
         {
             get => _shadow;
             set => SetProperty(ref _shadow, value);
         }
 
-        private int _bloodFlowScore;
-        public int BloodFlowScore
+        protected int _bloodFlowScore;
+        public virtual int BloodFlowScore
         {
             get => _bloodFlowScore;
             set => SetProperty(ref _bloodFlowScore, value);
@@ -239,70 +825,393 @@ namespace SURS.App.Models
 
     public class UnilocularCyst : LesionBase
     {
-        private bool _isSimple;
-        public bool IsSimple
-        {
-            get => _isSimple;
-            set => SetProperty(ref _isSimple, value);
+        private bool _isSimpleCyst;
+        public bool IsSimpleCyst 
+        { 
+            get => _isSimpleCyst;
+            set => SetProperty(ref _isSimpleCyst, value);
         }
 
-        // Echo properties
-        public bool EchoSmoothWall { get; set; }
-        public bool EchoRoughWall { get; set; }
-        public bool EchoDenseDots { get; set; }
-        public bool EchoFlocculent { get; set; }
-        public bool EchoGrid { get; set; }
-        public bool EchoStrongMass { get; set; }
-        public bool EchoShortLines { get; set; }
-        public bool EchoWeakDots { get; set; }
-        public bool EchoPatchy { get; set; }
-        public string EchoOther { get; set; } = string.Empty;
+        private bool _isNonSimpleCyst;
+        public bool IsNonSimpleCyst 
+        { 
+            get => _isNonSimpleCyst;
+            set => SetProperty(ref _isNonSimpleCyst, value);
+        }
+
+        private bool _echoSmoothWall;
+        public bool EchoSmoothWall 
+        { 
+            get => _echoSmoothWall;
+            set => SetProperty(ref _echoSmoothWall, value);
+        }
+
+        private bool _echoRoughWall;
+        public bool EchoRoughWall 
+        { 
+            get => _echoRoughWall;
+            set => SetProperty(ref _echoRoughWall, value);
+        }
+
+        private bool _echoDenseDots;
+        public bool EchoDenseDots 
+        { 
+            get => _echoDenseDots;
+            set => SetProperty(ref _echoDenseDots, value);
+        }
+
+        private bool _echoFlocculent;
+        public bool EchoFlocculent 
+        { 
+            get => _echoFlocculent;
+            set => SetProperty(ref _echoFlocculent, value);
+        }
+
+        private bool _echoGrid;
+        public bool EchoGrid 
+        { 
+            get => _echoGrid;
+            set => SetProperty(ref _echoGrid, value);
+        }
+
+        private bool _echoStrongMass;
+        public bool EchoStrongMass 
+        { 
+            get => _echoStrongMass;
+            set => SetProperty(ref _echoStrongMass, value);
+        }
+
+        private bool _echoShortLines;
+        public bool EchoShortLines 
+        { 
+            get => _echoShortLines;
+            set => SetProperty(ref _echoShortLines, value);
+        }
+
+        private bool _echoWeakDots;
+        public bool EchoWeakDots 
+        { 
+            get => _echoWeakDots;
+            set => SetProperty(ref _echoWeakDots, value);
+        }
+
+        private bool _echoPatchy;
+        public bool EchoPatchy 
+        { 
+            get => _echoPatchy;
+            set => SetProperty(ref _echoPatchy, value);
+        }
+
+        private string _echoOther = string.Empty;
+        public string EchoOther 
+        { 
+            get => _echoOther;
+            set => SetProperty(ref _echoOther, value);
+        }
+        
+        private string _location = string.Empty; // 位置（单选）
+        public new string Location
+        {
+            get => _location;
+            set => SetProperty(ref _location, value);
+        }
+        
+        private new string _boundary = string.Empty; // 规则/不规则
+        public new string Boundary
+        {
+            get => _boundary;
+            set => SetProperty(ref _boundary, value);
+        }
+        
+        private new string _shadow = string.Empty; // 有/无
+        public new string Shadow
+        {
+            get => _shadow;
+            set => SetProperty(ref _shadow, value);
+        }
+        
+        private new int _bloodFlowScore;
+        public new int BloodFlowScore
+        {
+            get => _bloodFlowScore;
+            set => SetProperty(ref _bloodFlowScore, value);
+        }
     }
 
     public class MultilocularCyst : LesionBase
     {
+        private string _location = string.Empty;
+        public new string Location
+        {
+            get => _location;
+            set => SetProperty(ref _location, value);
+        }
+        
         // Echo properties
-        public bool EchoSmoothWall { get; set; }
-        public bool EchoRoughWall { get; set; }
-        public bool EchoSmoothSeptum { get; set; }
-        public bool EchoRoughSeptum { get; set; }
-        public bool EchoGoodTransmission { get; set; }
-        public bool EchoPoorTransmission { get; set; }
-        public bool EchoDenseDots { get; set; }
-        public bool EchoFlocculent { get; set; }
-        public bool EchoStrongMass { get; set; }
-        public bool EchoShortLines { get; set; }
-        public bool EchoWeakDots { get; set; }
-        public bool EchoPatchy { get; set; }
-        public bool EchoRegularInnerWall { get; set; }
-        public bool EchoIrregularInnerWall { get; set; }
-        public bool EchoMoreThan10Locules { get; set; }
-        public string EchoOther { get; set; } = string.Empty;
+        private bool _echoSmoothWall;
+        public bool EchoSmoothWall 
+        { 
+            get => _echoSmoothWall;
+            set => SetProperty(ref _echoSmoothWall, value);
+        }
 
-        public bool FlowOnSeptum { get; set; }
-        public bool FlowOnWall { get; set; }
+        private bool _echoRoughWall;
+        public bool EchoRoughWall 
+        { 
+            get => _echoRoughWall;
+            set => SetProperty(ref _echoRoughWall, value);
+        }
+
+        private bool _echoSmoothSeptum;
+        public bool EchoSmoothSeptum 
+        { 
+            get => _echoSmoothSeptum;
+            set => SetProperty(ref _echoSmoothSeptum, value);
+        }
+
+        private bool _echoRoughSeptum;
+        public bool EchoRoughSeptum 
+        { 
+            get => _echoRoughSeptum;
+            set => SetProperty(ref _echoRoughSeptum, value);
+        }
+
+        private bool _echoGoodTransmission;
+        public bool EchoGoodTransmission 
+        { 
+            get => _echoGoodTransmission;
+            set => SetProperty(ref _echoGoodTransmission, value);
+        }
+
+        private bool _echoPoorTransmission;
+        public bool EchoPoorTransmission 
+        { 
+            get => _echoPoorTransmission;
+            set => SetProperty(ref _echoPoorTransmission, value);
+        }
+
+        private bool _echoDenseDots;
+        public bool EchoDenseDots 
+        { 
+            get => _echoDenseDots;
+            set => SetProperty(ref _echoDenseDots, value);
+        }
+
+        private bool _echoFlocculent;
+        public bool EchoFlocculent 
+        { 
+            get => _echoFlocculent;
+            set => SetProperty(ref _echoFlocculent, value);
+        }
+
+        private bool _echoStrongMass;
+        public bool EchoStrongMass 
+        { 
+            get => _echoStrongMass;
+            set => SetProperty(ref _echoStrongMass, value);
+        }
+
+        private bool _echoShortLines;
+        public bool EchoShortLines 
+        { 
+            get => _echoShortLines;
+            set => SetProperty(ref _echoShortLines, value);
+        }
+
+        private bool _echoWeakDots;
+        public bool EchoWeakDots 
+        { 
+            get => _echoWeakDots;
+            set => SetProperty(ref _echoWeakDots, value);
+        }
+
+        private bool _echoPatchy;
+        public bool EchoPatchy 
+        { 
+            get => _echoPatchy;
+            set => SetProperty(ref _echoPatchy, value);
+        }
+
+        private bool _echoRegularInnerWall;
+        public bool EchoRegularInnerWall 
+        { 
+            get => _echoRegularInnerWall;
+            set => SetProperty(ref _echoRegularInnerWall, value);
+        }
+
+        private bool _echoIrregularInnerWall;
+        public bool EchoIrregularInnerWall 
+        { 
+            get => _echoIrregularInnerWall;
+            set => SetProperty(ref _echoIrregularInnerWall, value);
+        }
+
+        private bool _echoMoreThan10Locules;
+        public bool EchoMoreThan10Locules 
+        { 
+            get => _echoMoreThan10Locules;
+            set => SetProperty(ref _echoMoreThan10Locules, value);
+        }
+
+        private string _echoOther = string.Empty;
+        public string EchoOther 
+        { 
+            get => _echoOther;
+            set => SetProperty(ref _echoOther, value);
+        }
+
+        private bool _flowOnSeptum;
+        public bool FlowOnSeptum 
+        { 
+            get => _flowOnSeptum;
+            set => SetProperty(ref _flowOnSeptum, value);
+        }
+
+        private bool _flowOnWall;
+        public bool FlowOnWall 
+        { 
+            get => _flowOnWall;
+            set => SetProperty(ref _flowOnWall, value);
+        }
+        
+        private new string _boundary = string.Empty;
+        public new string Boundary
+        {
+            get => _boundary;
+            set => SetProperty(ref _boundary, value);
+        }
+        
+        private new string _shadow = string.Empty;
+        public new string Shadow
+        {
+            get => _shadow;
+            set => SetProperty(ref _shadow, value);
+        }
+        
+        private new int _bloodFlowScore;
+        public new int BloodFlowScore
+        {
+            get => _bloodFlowScore;
+            set => SetProperty(ref _bloodFlowScore, value);
+        }
     }
 
     public class SolidCyst : LesionBase
     {
         // Cystic Part Echo
-        public bool EchoSmoothWall { get; set; }
-        public bool EchoRoughWall { get; set; }
-        public bool EchoSmoothSeptum { get; set; }
-        public bool EchoRoughSeptum { get; set; }
-        public bool EchoGoodTransmission { get; set; }
-        public bool EchoPoorTransmission { get; set; }
-        public bool EchoDenseDots { get; set; }
-        public bool EchoFlocculent { get; set; }
-        public bool EchoGrid { get; set; }
-        public bool EchoStrongMass { get; set; }
-        public bool EchoShortLines { get; set; }
-        public bool EchoWeakDots { get; set; }
-        public bool EchoPatchy { get; set; }
-        public bool EchoMoreThan10Locules { get; set; }
-        public string EchoOther { get; set; } = string.Empty;
+        private bool _echoSmoothWall;
+        public bool EchoSmoothWall 
+        { 
+            get => _echoSmoothWall;
+            set => SetProperty(ref _echoSmoothWall, value);
+        }
+
+        private bool _echoRoughWall;
+        public bool EchoRoughWall 
+        { 
+            get => _echoRoughWall;
+            set => SetProperty(ref _echoRoughWall, value);
+        }
+
+        private bool _echoSmoothSeptum;
+        public bool EchoSmoothSeptum 
+        { 
+            get => _echoSmoothSeptum;
+            set => SetProperty(ref _echoSmoothSeptum, value);
+        }
+
+        private bool _echoRoughSeptum;
+        public bool EchoRoughSeptum 
+        { 
+            get => _echoRoughSeptum;
+            set => SetProperty(ref _echoRoughSeptum, value);
+        }
+
+        private bool _echoGoodTransmission;
+        public bool EchoGoodTransmission 
+        { 
+            get => _echoGoodTransmission;
+            set => SetProperty(ref _echoGoodTransmission, value);
+        }
+
+        private bool _echoPoorTransmission;
+        public bool EchoPoorTransmission 
+        { 
+            get => _echoPoorTransmission;
+            set => SetProperty(ref _echoPoorTransmission, value);
+        }
+
+        private bool _echoDenseDots;
+        public bool EchoDenseDots 
+        { 
+            get => _echoDenseDots;
+            set => SetProperty(ref _echoDenseDots, value);
+        }
+
+        private bool _echoFlocculent;
+        public bool EchoFlocculent 
+        { 
+            get => _echoFlocculent;
+            set => SetProperty(ref _echoFlocculent, value);
+        }
+
+        private bool _echoGrid;
+        public bool EchoGrid 
+        { 
+            get => _echoGrid;
+            set => SetProperty(ref _echoGrid, value);
+        }
+
+        private bool _echoStrongMass;
+        public bool EchoStrongMass 
+        { 
+            get => _echoStrongMass;
+            set => SetProperty(ref _echoStrongMass, value);
+        }
+
+        private bool _echoShortLines;
+        public bool EchoShortLines 
+        { 
+            get => _echoShortLines;
+            set => SetProperty(ref _echoShortLines, value);
+        }
+
+        private bool _echoWeakDots;
+        public bool EchoWeakDots 
+        { 
+            get => _echoWeakDots;
+            set => SetProperty(ref _echoWeakDots, value);
+        }
+
+        private bool _echoPatchy;
+        public bool EchoPatchy 
+        { 
+            get => _echoPatchy;
+            set => SetProperty(ref _echoPatchy, value);
+        }
+
+        private bool _echoMoreThan10Locules;
+        public bool EchoMoreThan10Locules 
+        { 
+            get => _echoMoreThan10Locules;
+            set => SetProperty(ref _echoMoreThan10Locules, value);
+        }
+
+        private string _echoOther = string.Empty;
+        public string EchoOther 
+        { 
+            get => _echoOther;
+            set => SetProperty(ref _echoOther, value);
+        }
 
         // Papillary
+        private bool _hasNoPapillary;
+        public bool HasNoPapillary
+        {
+            get => _hasNoPapillary;
+            set => SetProperty(ref _hasNoPapillary, value);
+        }
+        
         private bool _hasPapillary;
         public bool HasPapillary
         {
@@ -310,39 +1219,223 @@ namespace SURS.App.Models
             set => SetProperty(ref _hasPapillary, value);
         }
         
-        public double PapillaryLength { get; set; }
-        public double PapillaryWidth { get; set; }
-        public double PapillaryHeight { get; set; }
-        public double PapillaryHeightVal { get; set; } // "Height" in cm
+        private double _papillaryLength;
+        public double PapillaryLength 
+        { 
+            get => _papillaryLength;
+            set => SetProperty(ref _papillaryLength, value);
+        }
 
-        public string PapillaryEcho { get; set; } = string.Empty; // Low, Iso, High
-        public string PapillaryCount { get; set; } = string.Empty; // 1, 2, 3, >3
-        public string PapillaryContour { get; set; } = string.Empty; // Regular, Irregular
-        public string PapillaryShadow { get; set; } = string.Empty;
-        public bool PapillaryHasFlow { get; set; }
-        public string PapillaryFlowAmount { get; set; } = string.Empty; // Scanty, Moderate, Abundant
+        private double _papillaryWidth;
+        public double PapillaryWidth 
+        { 
+            get => _papillaryWidth;
+            set => SetProperty(ref _papillaryWidth, value);
+        }
+
+        private double _papillaryHeight;
+        public double PapillaryHeight 
+        { 
+            get => _papillaryHeight;
+            set => SetProperty(ref _papillaryHeight, value);
+        }
+
+        private double _papillaryHeightVal;
+        public double PapillaryHeightVal 
+        { 
+            get => _papillaryHeightVal;
+            set => SetProperty(ref _papillaryHeightVal, value);
+        }
+        
+        // Papillary Echo (Multi-select)
+        private bool _papillaryEchoLow;
+        public bool PapillaryEchoLow 
+        { 
+            get => _papillaryEchoLow;
+            set => SetProperty(ref _papillaryEchoLow, value);
+        }
+
+        private bool _papillaryEchoIso;
+        public bool PapillaryEchoIso 
+        { 
+            get => _papillaryEchoIso;
+            set => SetProperty(ref _papillaryEchoIso, value);
+        }
+
+        private bool _papillaryEchoHigh;
+        public bool PapillaryEchoHigh 
+        { 
+            get => _papillaryEchoHigh;
+            set => SetProperty(ref _papillaryEchoHigh, value);
+        }
+
+        private string _papillaryCount = string.Empty;
+        public string PapillaryCount 
+        { 
+            get => _papillaryCount;
+            set => SetProperty(ref _papillaryCount, value);
+        }
+
+        private string _papillaryContour = string.Empty;
+        public string PapillaryContour 
+        { 
+            get => _papillaryContour;
+            set => SetProperty(ref _papillaryContour, value);
+        }
+
+        private string _papillaryShadow = string.Empty;
+        public string PapillaryShadow 
+        { 
+            get => _papillaryShadow;
+            set => SetProperty(ref _papillaryShadow, value);
+        }
+
+        private bool _papillaryHasNoFlow;
+        public bool PapillaryHasNoFlow 
+        { 
+            get => _papillaryHasNoFlow;
+            set => SetProperty(ref _papillaryHasNoFlow, value);
+        }
+
+        private bool _papillaryHasFlow;
+        public bool PapillaryHasFlow 
+        { 
+            get => _papillaryHasFlow;
+            set => SetProperty(ref _papillaryHasFlow, value);
+        }
+
+        private string _papillaryFlowAmount = string.Empty;
+        public string PapillaryFlowAmount 
+        { 
+            get => _papillaryFlowAmount;
+            set => SetProperty(ref _papillaryFlowAmount, value);
+        }
 
         // Solid Component (Non-Papillary)
-        public double SolidLength { get; set; }
-        public double SolidWidth { get; set; }
-        public double SolidHeight { get; set; }
-        public string SolidEcho { get; set; } = string.Empty;
-        public string SolidBoundary { get; set; } = string.Empty;
-        public string SolidShadow { get; set; } = string.Empty;
-        public bool SolidHasFlow { get; set; }
-        public string SolidFlowAmount { get; set; } = string.Empty;
+        private double _solidLength;
+        public double SolidLength 
+        { 
+            get => _solidLength;
+            set => SetProperty(ref _solidLength, value);
+        }
+
+        private double _solidWidth;
+        public double SolidWidth 
+        { 
+            get => _solidWidth;
+            set => SetProperty(ref _solidWidth, value);
+        }
+
+        private double _solidHeight;
+        public double SolidHeight 
+        { 
+            get => _solidHeight;
+            set => SetProperty(ref _solidHeight, value);
+        }
+        
+        // Solid Echo (Multi-select)
+        private bool _solidEchoLow;
+        public bool SolidEchoLow 
+        { 
+            get => _solidEchoLow;
+            set => SetProperty(ref _solidEchoLow, value);
+        }
+
+        private bool _solidEchoIso;
+        public bool SolidEchoIso 
+        { 
+            get => _solidEchoIso;
+            set => SetProperty(ref _solidEchoIso, value);
+        }
+
+        private bool _solidEchoHigh;
+        public bool SolidEchoHigh 
+        { 
+            get => _solidEchoHigh;
+            set => SetProperty(ref _solidEchoHigh, value);
+        }
+
+        private bool _solidEchoOther;
+        public bool SolidEchoOther 
+        { 
+            get => _solidEchoOther;
+            set => SetProperty(ref _solidEchoOther, value);
+        }
+
+        private string _solidEchoOtherText = string.Empty;
+        public string SolidEchoOtherText 
+        { 
+            get => _solidEchoOtherText;
+            set => SetProperty(ref _solidEchoOtherText, value);
+        }
+
+        private string _solidBoundary = string.Empty;
+        public string SolidBoundary 
+        { 
+            get => _solidBoundary;
+            set => SetProperty(ref _solidBoundary, value);
+        }
+
+        private string _solidShadow = string.Empty;
+        public string SolidShadow 
+        { 
+            get => _solidShadow;
+            set => SetProperty(ref _solidShadow, value);
+        }
+
+        private bool _solidHasNoFlow;
+        public bool SolidHasNoFlow 
+        { 
+            get => _solidHasNoFlow;
+            set => SetProperty(ref _solidHasNoFlow, value);
+        }
+
+        private bool _solidHasFlow;
+        public bool SolidHasFlow 
+        { 
+            get => _solidHasFlow;
+            set => SetProperty(ref _solidHasFlow, value);
+        }
+
+        private string _solidFlowAmount = string.Empty;
+        public string SolidFlowAmount 
+        { 
+            get => _solidFlowAmount;
+            set => SetProperty(ref _solidFlowAmount, value);
+        }
+        
+        private string _location = string.Empty;
+        public new string Location
+        {
+            get => _location;
+            set => SetProperty(ref _location, value);
+        }
+        
+        private new string _boundary = string.Empty;
+        public new string Boundary
+        {
+            get => _boundary;
+            set => SetProperty(ref _boundary, value);
+        }
+        
+        private new int _bloodFlowScore;
+        public new int BloodFlowScore
+        {
+            get => _bloodFlowScore;
+            set => SetProperty(ref _bloodFlowScore, value);
+        }
     }
 
     public class SolidMass : LesionBase
     {
-        private string _echoUniformity = string.Empty; // Uniform/Non-uniform
+        private string _echoUniformity = string.Empty; // 均匀/不均匀
         public string EchoUniformity
         {
             get => _echoUniformity;
             set => SetProperty(ref _echoUniformity, value);
         }
 
-        private string _echoType = string.Empty; // Low, Iso, High
+        private string _echoType = string.Empty; // 低回声, 等回声, 高回声
         public string EchoType
         {
             get => _echoType;
