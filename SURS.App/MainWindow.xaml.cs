@@ -92,7 +92,7 @@ namespace SURS.App
                 }
                 else if (isInitial)
                 {
-                    PreviewColumn.Width = new GridLength(0.4, GridUnitType.Star);
+                    PreviewColumn.Width = new GridLength(0.75, GridUnitType.Star);
                 }
 
                 if (_savedSplitterColumnWidth.HasValue)
@@ -152,8 +152,11 @@ namespace SURS.App
                 if (viewModel != null)
                 {
                     // 处理缩放
-                    viewModel.HandleMouseWheelZoom(e.Delta, Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl));
-                    e.Handled = true;
+                    bool handled = viewModel.HandleMouseWheelZoom(e.Delta, Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl));
+                    if (handled)
+                    {
+                        e.Handled = true;
+                    }
                 }
             }
         }

@@ -98,10 +98,10 @@ namespace SURS.App.ViewModels
         /// <summary>
         /// 处理鼠标滚轮缩放
         /// </summary>
-        public void HandleMouseWheelZoom(int delta, bool ctrlPressed = false)
+        public bool HandleMouseWheelZoom(int delta, bool ctrlPressed = false)
         {
-            // Ctrl + 滚轮 或 直接在预览区域滚轮
-            if (ctrlPressed || true) // 始终允许滚轮缩放
+            // 仅当按住 Ctrl 时才缩放
+            if (ctrlPressed)
             {
                 // 基于基准值的10%作为步进（相对于显示100%的10%）
                 double zoomStep = BaseZoom * 0.1; // 每次缩放10%（相对于基准值）
@@ -113,7 +113,9 @@ namespace SURS.App.ViewModels
                 {
                     PreviewZoom = Math.Max(BaseZoom, PreviewZoom - zoomStep);
                 }
+                return true; // 已处理缩放
             }
+            return false; // 未处理，允许默认滚动
         }
 
         public MainViewModel()
