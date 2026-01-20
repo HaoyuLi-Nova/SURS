@@ -10,8 +10,10 @@
         mc:Ignorable="d"
         Title="SURS 妇科超声结构化报告系统" Height="950" Width="1800"
         WindowStartupLocation="CenterScreen"
+        WindowState="Maximized"
         Background="#F8F9FA" FontFamily="Segoe UI, Microsoft YaHei UI, sans-serif"
-        PreviewKeyDown="Window_PreviewKeyDown">
+        PreviewKeyDown="Window_PreviewKeyDown"
+        Loaded="Window_Loaded">
 
     <Window.Resources>
         <converters:RadioBoolConverter x:Key="RadioBoolConverter"/>
@@ -129,6 +131,49 @@
                             </Border.Effect>
                             <ContentPresenter Margin="{TemplateBinding Padding}"/>
                         </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="CollapsibleCard" TargetType="Expander">
+            <Setter Property="Background" Value="{StaticResource Brush.Surface}"/>
+            <Setter Property="Padding" Value="32"/>
+            <Setter Property="Margin" Value="0,0,0,28"/>
+            <Setter Property="IsExpanded" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Expander">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="12" BorderBrush="{StaticResource Brush.BorderLight}" BorderThickness="1">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#000000" Direction="270" ShadowDepth="0" BlurRadius="20" Opacity="0.08"/>
+                            </Border.Effect>
+                            <StackPanel>
+                                <ToggleButton x:Name="HeaderSite"
+                                              IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}}"
+                                              BorderThickness="0"
+                                              Background="{StaticResource Brush.Primary}"
+                                              Padding="16,12"
+                                              Cursor="Hand">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <ContentPresenter Grid.Column="0" ContentSource="Header" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="Chevron" Grid.Column="1" Text="▼" Foreground="White" FontSize="12" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                                    </Grid>
+                                </ToggleButton>
+
+                                <ContentPresenter x:Name="ExpandSite" ContentSource="Content" Margin="{TemplateBinding Padding}"/>
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsExpanded" Value="False">
+                                <Setter TargetName="ExpandSite" Property="Visibility" Value="Collapsed"/>
+                                <Setter TargetName="Chevron" Property="Text" Value="▶"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
@@ -321,31 +366,44 @@
                         <TextBlock Text="妇科超声结构化报告系统" Foreground="White" FontSize="12" Opacity="0.85" Margin="0,2,0,0"/>
                     </StackPanel>
                 </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding Report.HospitalName}" Foreground="White" FontSize="14" Opacity="0.95" Margin="0,0,20,0" VerticalAlignment="Center" FontWeight="Medium"/>
-                    <Border Background="White" Opacity="0.2" CornerRadius="6" Padding="12,6">
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
+                    <TextBlock Text="{Binding Report.HospitalName}" Foreground="White" FontSize="15" Opacity="0.95" Margin="0,0,24,0" VerticalAlignment="Center" FontWeight="Medium"/>
+                    
+                    <!-- Date Display -->
+                    <Border Background="#20FFFFFF" CornerRadius="16" Padding="16,6" Margin="0,0,16,0" VerticalAlignment="Center">
                         <TextBlock Text="{Binding Source={x:Static system:DateTime.Now}, StringFormat='yyyy-MM-dd'}" Foreground="White" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
                     </Border>
-                    <!-- Toggle Preview Button (when hidden) -->
-                    <Border Background="White" Opacity="0.2" CornerRadius="6" Padding="12,6" Margin="12,0,0,0" Cursor="Hand" ToolTip="显示实时预览面板">
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Setter Property="Visibility" Value="Collapsed"/>
-                                <Style.Triggers>
+
+                    <!-- Toggle Preview Button -->
+                    <Button Command="{Binding TogglePreviewCommand}" 
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Cursor="Hand"
+                            Padding="0"
+                            VerticalAlignment="Center">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="BtnBorder" Background="#30FFFFFF" CornerRadius="16" Padding="16,6">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock x:Name="BtnIcon" Text="✕" Foreground="White" FontSize="12" FontWeight="Bold" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="BtnText" Text="关闭预览" Foreground="White" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+                                <ControlTemplate.Triggers>
                                     <DataTrigger Binding="{Binding IsPreviewVisible}" Value="False">
-                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Setter TargetName="BtnBorder" Property="Background" Value="#FFFFFF"/>
+                                        <Setter TargetName="BtnIcon" Property="Text" Value="👁"/>
+                                        <Setter TargetName="BtnIcon" Property="Foreground" Value="{StaticResource Brush.Primary}"/>
+                                        <Setter TargetName="BtnText" Property="Text" Value="显示预览"/>
+                                        <Setter TargetName="BtnText" Property="Foreground" Value="{StaticResource Brush.Primary}"/>
                                     </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Border.Style>
-                        <Button Content="👁 显示预览" 
-                               Command="{Binding TogglePreviewCommand}" 
-                               Background="Transparent" 
-                               Foreground="White" 
-                               BorderThickness="0" 
-                               Padding="0"
-                               Cursor="Hand"/>
-                    </Border>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="BtnBorder" Property="Opacity" Value="0.8"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
                 </StackPanel>
             </Grid>
         </Border>
@@ -384,15 +442,15 @@
             <ScrollViewer Grid.Column="0" Padding="0,40" Background="{StaticResource Brush.Background}">
                 <StackPanel MaxWidth="1000" HorizontalAlignment="Center">
 
-                <!-- 一、报告头部与基础信息 -->
-                <ContentControl Style="{StaticResource Card}">
+                <!-- 报告头部与基础信息 -->
+                <Expander Style="{StaticResource CollapsibleCard}">
+                    <Expander.Header>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="4" Height="24" Background="White" CornerRadius="2" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                            <TextBlock Text="报告头部与基础信息" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Expander.Header>
                     <StackPanel>
-                        <Border Style="{StaticResource SectionHeader}">
-                            <StackPanel Orientation="Horizontal">
-                                <Border Width="4" Height="24" Background="White" CornerRadius="2" VerticalAlignment="Center" Margin="0,0,12,0"/>
-                                <TextBlock Text="一、报告头部与基础信息" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
 
                         <Grid Margin="0,0,0,20">
                             <Grid.ColumnDefinitions>
@@ -402,10 +460,6 @@
                             <TextBlock Text="机构名称：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
                             <StackPanel Orientation="Horizontal" Grid.Column="1">
                                 <TextBox Text="{Binding Report.HospitalName, UpdateSourceTrigger=PropertyChanged}" Width="300" Margin="0,0,12,0"/>
-                                <TextBlock Text="（" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                <CheckBox Content="东院" IsChecked="{Binding Report.IsEastBranch}" Margin="0,0,8,0"/>
-                                <CheckBox Content="西院" IsChecked="{Binding Report.IsWestBranch}" Margin="0,0,8,0"/>
-                                <TextBlock Text="）" VerticalAlignment="Center" Margin="8,0,0,0"/>
                             </StackPanel>
                         </Grid>
 
@@ -420,8 +474,8 @@
                             <TextBlock Text="登记号：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
                             <TextBox Text="{Binding Report.RegistrationNo, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1"/>
                             
-                            <TextBlock Text="姓名：" Style="{StaticResource Text.Label}" Grid.Column="3"/>
-                            <TextBox Text="{Binding Report.PatientName, UpdateSourceTrigger=PropertyChanged}" Grid.Column="4"/>
+                            <TextBlock Text="序号：" Style="{StaticResource Text.Label}" Grid.Column="3"/>
+                            <TextBox Text="{Binding Report.SerialNo, UpdateSourceTrigger=PropertyChanged}" Grid.Column="4"/>
                         </Grid>
 
                         <Grid Margin="0,0,0,20">
@@ -435,17 +489,38 @@
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="性别：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
-                            <ComboBox SelectedValue="{Binding Report.Gender, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Content" Grid.Column="1" Height="38" VerticalContentAlignment="Center">
+                            <TextBlock Text="姓名：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                            <TextBox Text="{Binding Report.PatientName, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1"/>
+                            
+                            <TextBlock Text="性别：" Style="{StaticResource Text.Label}" Grid.Column="3"/>
+                            <ComboBox SelectedValue="{Binding Report.Gender, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Content" Grid.Column="4" Height="38" VerticalContentAlignment="Center">
                                 <ComboBoxItem Content="女"/>
                                 <ComboBoxItem Content="男"/>
                             </ComboBox>
                             
-                            <TextBlock Text="年龄：" Style="{StaticResource Text.Label}" Grid.Column="3"/>
-                            <TextBox Text="{Binding Report.Age, UpdateSourceTrigger=PropertyChanged}" Grid.Column="4"/>
+                            <TextBlock Text="年龄：" Style="{StaticResource Text.Label}" Grid.Column="6"/>
+                            <TextBox Text="{Binding Report.Age, UpdateSourceTrigger=PropertyChanged}" Grid.Column="7"/>
+                        </Grid>
 
-                            <TextBlock Text="科别：" Style="{StaticResource Text.Label}" Grid.Column="6"/>
-                            <TextBox Text="{Binding Report.Department, UpdateSourceTrigger=PropertyChanged}" Grid.Column="7"/>
+                        <Grid Margin="0,0,0,20">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="20"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="20"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="科别：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                            <TextBox Text="{Binding Report.Department, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1"/>
+
+                            <TextBlock Text="门诊号：" Style="{StaticResource Text.Label}" Grid.Column="3"/>
+                            <TextBox Text="{Binding Report.OutpatientNo, UpdateSourceTrigger=PropertyChanged}" Grid.Column="4"/>
+                            
+                            <TextBlock Text="住院号：" Style="{StaticResource Text.Label}" Grid.Column="6"/>
+                            <TextBox Text="{Binding Report.InpatientNo, UpdateSourceTrigger=PropertyChanged}" Grid.Column="7"/>
                         </Grid>
 
                         <Grid Margin="0,0,0,20">
@@ -456,11 +531,11 @@
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="门诊号：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
-                            <TextBox Text="{Binding Report.OutpatientNo, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1"/>
+                            <TextBlock Text="床位：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                            <TextBox Text="{Binding Report.BedNo, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1"/>
                             
-                            <TextBlock Text="住院号：" Style="{StaticResource Text.Label}" Grid.Column="3"/>
-                            <TextBox Text="{Binding Report.InpatientNo, UpdateSourceTrigger=PropertyChanged}" Grid.Column="4"/>
+                            <TextBlock Text="申请医师：" Style="{StaticResource Text.Label}" Grid.Column="3"/>
+                            <TextBox Text="{Binding Report.ApplyingPhysician, UpdateSourceTrigger=PropertyChanged}" Grid.Column="4"/>
                         </Grid>
 
                         <Grid Margin="0,0,0,20">
@@ -484,13 +559,36 @@
                             <TextBlock Text="妇科超声结构化报告" Grid.Column="1" VerticalAlignment="Center" FontWeight="SemiBold"/>
                         </Grid>
 
-                        <Grid Margin="0,0,0,20">
+                        <!-- 末次月经时间 (LMP) -->
+                        <Grid Margin="0,0,0,24">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="末次月经时间：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
-                            <DatePicker SelectedDate="{Binding Report.LastMenstrualPeriod}" Grid.Column="1" Width="220" VerticalAlignment="Center" Height="38" FontSize="14"/>
+                            <TextBlock Text="末次月经时间 (LMP)：" Style="{StaticResource Text.Label}" Grid.Column="0" VerticalAlignment="Center"/>
+                            
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="12,0,0,0">
+                                <ComboBox ItemsSource="{Binding Report.AvailableYears}" 
+                                          SelectedValue="{Binding Report.LmpYear}" 
+                                          Width="100" Height="38" 
+                                          VerticalContentAlignment="Center" 
+                                          Margin="0,0,8,0"/>
+                                <TextBlock Text="年" VerticalAlignment="Center" Margin="0,0,12,0" FontSize="15"/>
+                                
+                                <ComboBox ItemsSource="{Binding Report.AvailableMonths}" 
+                                          SelectedValue="{Binding Report.LmpMonth}" 
+                                          Width="80" Height="38" 
+                                          VerticalContentAlignment="Center" 
+                                          Margin="0,0,8,0"/>
+                                <TextBlock Text="月" VerticalAlignment="Center" Margin="0,0,12,0" FontSize="15"/>
+                                
+                                <ComboBox ItemsSource="{Binding Report.AvailableDays}" 
+                                          SelectedValue="{Binding Report.LmpDay}" 
+                                          Width="80" Height="38" 
+                                          VerticalContentAlignment="Center" 
+                                          Margin="0,0,8,0"/>
+                                <TextBlock Text="日" VerticalAlignment="Center" FontSize="15"/>
+                            </StackPanel>
                         </Grid>
 
                         <Grid Margin="0,0,0,0">
@@ -530,17 +628,17 @@
                             </StackPanel>
                         </Grid>
                     </StackPanel>
-                </ContentControl>
+                </Expander>
 
-                <!-- 二、子宫部分 -->
-                <ContentControl Style="{StaticResource Card}">
+                <!-- 子宫部分 -->
+                <Expander Style="{StaticResource CollapsibleCard}">
+                    <Expander.Header>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="4" Height="24" Background="White" CornerRadius="2" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                            <TextBlock Text="子宫部分" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Expander.Header>
                     <StackPanel>
-                        <Border Style="{StaticResource SectionHeader}">
-                            <StackPanel Orientation="Horizontal">
-                                <Border Width="4" Height="24" Background="White" CornerRadius="2" VerticalAlignment="Center" Margin="0,0,12,0"/>
-                                <TextBlock Text="二、子宫部分" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
 
                         <!-- 子宫基本声像 -->
                         <Border Background="#F0F7FF" CornerRadius="8" Padding="16,12" Margin="0,0,0,20">
@@ -697,7 +795,7 @@
 
                         <!-- 子宫内膜 -->
                         <Border Background="#F0F7FF" CornerRadius="8" Padding="16,12" Margin="0,20,0,20">
-                            <TextBlock Text="子宫内膜 (Endometrium)" FontWeight="SemiBold" FontSize="16" Foreground="{StaticResource Brush.Primary}"/>
+                            <TextBlock Text="子宫内膜" FontWeight="SemiBold" FontSize="16" Foreground="{StaticResource Brush.Primary}"/>
                         </Border>
 
                         <Grid Margin="0,0,0,20">
@@ -752,7 +850,7 @@
                                     <WrapPanel>
                                         <CheckBox Content="未见囊样结构" IsChecked="{Binding Report.Endometrium.NonUniformNoCyst}" Margin="0,0,16,0"/>
                                         <CheckBox Content="可见形态规则的囊样结构" IsChecked="{Binding Report.Endometrium.NonUniformRegularCyst}" Margin="0,0,16,0"/>
-                                        <CheckBox Content="可见不规则的囊样结构" IsChecked="{Binding Report.Endometrium.NonUniformIrregularCyst}"/>
+                                        <CheckBox Content="可见不规则的囊样结构" IsChecked="{Binding Report.Endometrium.NonUniformIrregularCyst}" Margin="0,0,16,0"/>
                                     </WrapPanel>
                                 </StackPanel>
                             </StackPanel>
@@ -864,17 +962,17 @@
                             </Grid>
                         </StackPanel>
                     </StackPanel>
-                </ContentControl>
+                </Expander>
 
                 <!-- 三、宫腔占位性病变 -->
-                <ContentControl Style="{StaticResource Card}">
+                <Expander Style="{StaticResource CollapsibleCard}">
+                    <Expander.Header>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="4" Height="24" Background="White" CornerRadius="2" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                            <TextBlock Text="宫腔占位性病变" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Expander.Header>
                     <StackPanel>
-                        <Border Style="{StaticResource SectionHeader}">
-                            <StackPanel Orientation="Horizontal">
-                                <Border Width="4" Height="24" Background="White" CornerRadius="2" VerticalAlignment="Center" Margin="0,0,12,0"/>
-                                <TextBlock Text="宫腔占位性病变" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
 
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
                             <TextBlock Text="占位性病变：" Style="{StaticResource Text.Label}" Margin="0,0,16,0"/>
@@ -922,7 +1020,7 @@
                                                 <RadioButton GroupName="CavityPed" Content="带蒂" IsChecked="{Binding Report.Cavity.IsPedunculated, Converter={StaticResource RadioBoolConverter}, ConverterParameter=True}"/>
                                             </WrapPanel>
                                             <TextBlock FontSize="11" Foreground="{StaticResource Brush.TextSecondary}" FontStyle="Italic" Margin="0,8,0,0" TextWrapping="Wrap">
-                                                <Run Text="【带蒂定义注：子宫内膜水平的基部直径 (a) 与病变的最大横径 (b) 之间的比率，如果 a / b 比率＜1，则定义为"/>
+                                                <Run Text="【带蒂定义：子宫内膜水平的基部直径 (a) 与病变的最大横径 (b) 之间的比率，如果 a / b 比率＜1，则定义为"/>
                                                 <Run Text="&quot;带蒂&quot;"/>
                                                 <Run Text="，如果为 1 或更大则定义为"/>
                                                 <Run Text="&quot;无蒂&quot;"/>
@@ -1039,17 +1137,17 @@
                             </Border>
                         </StackPanel>
                     </StackPanel>
-                </ContentControl>
+                </Expander>
 
-                <!-- 四、卵巢与附件部分 -->
-                <ContentControl Style="{StaticResource Card}">
+                <!-- 卵巢与附件部分 -->
+                <Expander Style="{StaticResource CollapsibleCard}">
+                    <Expander.Header>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="4" Height="24" Background="White" CornerRadius="2" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                            <TextBlock Text="卵巢与附件部分" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Expander.Header>
                     <StackPanel>
-                        <Border Style="{StaticResource SectionHeader}">
-                            <StackPanel Orientation="Horizontal">
-                                <Border Width="4" Height="24" Background="White" CornerRadius="2" VerticalAlignment="Center" Margin="0,0,12,0"/>
-                                <TextBlock Text="四、卵巢与附件部分 (Ovary &amp; Adnexa)" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
 
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
                             <TextBlock Text="卵巢评价：" Style="{StaticResource Text.Label}" Margin="0,0,16,0"/>
@@ -1131,7 +1229,7 @@
                         <!-- 异常 -->
                         <StackPanel Visibility="{Binding Report.IsOvaryAbnormal, Converter={StaticResource BoolToVis}}">
                             <Border Background="#FFF3E0" CornerRadius="8" Padding="14,10" Margin="0,0,0,16">
-                                <TextBlock Text="异常（下级目录，以下类目多选）" FontWeight="SemiBold" FontSize="16" Foreground="#E65100"/>
+                                <TextBlock Text="异常（以下类目多选）" FontWeight="SemiBold" FontSize="16" Foreground="#E65100"/>
                             </Border>
                             
                             <CheckBox Content="A. 单房囊肿" IsChecked="{Binding Report.HasUnilocularCyst}" FontWeight="SemiBold" Margin="0,0,0,12"/>
@@ -1140,16 +1238,19 @@
                             <CheckBox Content="D. 实性肿物" IsChecked="{Binding Report.HasSolidMass}" FontWeight="SemiBold" Margin="0,0,0,12"/>
                         </StackPanel>
                     </StackPanel>
-                </ContentControl>
+                </Expander>
 
                 <!-- Findings Details (Conditional) -->
                 
                 <!-- A. 单房囊肿 -->
-                <ContentControl Style="{StaticResource Card}" Visibility="{Binding Report.HasUnilocularCyst, Converter={StaticResource BoolToVis}}">
+                <Expander Style="{StaticResource CollapsibleCard}" Visibility="{Binding Report.HasUnilocularCyst, Converter={StaticResource BoolToVis}}">
+                    <Expander.Header>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="4" Height="24" Background="White" CornerRadius="2" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                            <TextBlock Text="A. 单房囊肿" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Expander.Header>
                     <StackPanel>
-                        <Border Background="#E3F2FD" CornerRadius="8" Padding="16,12" Margin="0,0,0,20">
-                            <TextBlock Text="A. 单房囊肿" FontWeight="SemiBold" FontSize="18" Foreground="#1565C0"/>
-                        </Border>
                         
                         <Grid Margin="0,0,0,16">
                             <Grid.ColumnDefinitions>
@@ -1178,8 +1279,10 @@
                                 <RadioButton GroupName="UniLoc" Content="右附件" IsChecked="{Binding Report.UnilocularCyst.Location, Converter={StaticResource RadioBoolConverter}, ConverterParameter=右附件}"/>
                                 <RadioButton GroupName="UniLoc" Content="子宫后方" IsChecked="{Binding Report.UnilocularCyst.Location, Converter={StaticResource RadioBoolConverter}, ConverterParameter=子宫后方}"/>
                                 <RadioButton GroupName="UniLoc" Content="子宫前方" IsChecked="{Binding Report.UnilocularCyst.Location, Converter={StaticResource RadioBoolConverter}, ConverterParameter=子宫前方}"/>
-                                <RadioButton GroupName="UniLoc" Content="其他" IsChecked="{Binding Report.UnilocularCyst.Location, Converter={StaticResource RadioBoolConverter}, ConverterParameter=其他}"/>
-                                <TextBox Text="{Binding Report.UnilocularCyst.Location, UpdateSourceTrigger=PropertyChanged}" Width="100" Margin="8,0,0,0" Visibility="{Binding Report.UnilocularCyst.Location, Converter={StaticResource RadioToVis}, ConverterParameter=其他}"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <RadioButton GroupName="UniLoc" Content="其他" IsChecked="{Binding Report.UnilocularCyst.Location, Converter={StaticResource RadioBoolConverter}, ConverterParameter=其他}"/>
+                                    <TextBox Text="{Binding Report.UnilocularCyst.LocationOther, UpdateSourceTrigger=PropertyChanged}" Width="100" Margin="8,0,0,0" Visibility="{Binding Report.UnilocularCyst.Location, Converter={StaticResource RadioToVis}, ConverterParameter=其他}"/>
+                                </StackPanel>
                             </WrapPanel>
                         </Grid>
 
@@ -1197,8 +1300,8 @@
                             <CheckBox Content="内见弱点状回声" IsChecked="{Binding Report.UnilocularCyst.EchoWeakDots}"/>
                             <CheckBox Content="内见片状回声" IsChecked="{Binding Report.UnilocularCyst.EchoPatchy}"/>
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="其他" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                <TextBox Text="{Binding Report.UnilocularCyst.EchoOther, UpdateSourceTrigger=PropertyChanged}" Width="100"/>
+                                <CheckBox Content="其他" IsChecked="{Binding Report.UnilocularCyst.HasEchoOther}"/>
+                                <TextBox Text="{Binding Report.UnilocularCyst.EchoOther, UpdateSourceTrigger=PropertyChanged}" Width="100" Margin="4,0,0,0" Visibility="{Binding Report.UnilocularCyst.HasEchoOther, Converter={StaticResource BoolToVis}}"/>
                             </StackPanel>
                         </WrapPanel>
 
@@ -1240,14 +1343,17 @@
                             </WrapPanel>
                         </Grid>
                     </StackPanel>
-                </ContentControl>
+                </Expander>
 
                 <!-- B. 多房囊肿 -->
-                <ContentControl Style="{StaticResource Card}" Visibility="{Binding Report.HasMultilocularCyst, Converter={StaticResource BoolToVis}}">
+                <Expander Style="{StaticResource CollapsibleCard}" Visibility="{Binding Report.HasMultilocularCyst, Converter={StaticResource BoolToVis}}">
+                    <Expander.Header>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="4" Height="24" Background="White" CornerRadius="2" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                            <TextBlock Text="B. 多房囊肿" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Expander.Header>
                     <StackPanel>
-                        <Border Background="#E3F2FD" CornerRadius="8" Padding="16,12" Margin="0,0,0,20">
-                            <TextBlock Text="B. 多房囊肿" FontWeight="SemiBold" FontSize="18" Foreground="#1565C0"/>
-                        </Border>
                         
                         <Grid Margin="0,0,0,16">
                             <Grid.ColumnDefinitions>
@@ -1276,8 +1382,10 @@
                                 <RadioButton GroupName="MultiLoc" Content="右附件" IsChecked="{Binding Report.MultilocularCyst.Location, Converter={StaticResource RadioBoolConverter}, ConverterParameter=右附件}"/>
                                 <RadioButton GroupName="MultiLoc" Content="子宫后方" IsChecked="{Binding Report.MultilocularCyst.Location, Converter={StaticResource RadioBoolConverter}, ConverterParameter=子宫后方}"/>
                                 <RadioButton GroupName="MultiLoc" Content="子宫前方" IsChecked="{Binding Report.MultilocularCyst.Location, Converter={StaticResource RadioBoolConverter}, ConverterParameter=子宫前方}"/>
-                                <RadioButton GroupName="MultiLoc" Content="其他" IsChecked="{Binding Report.MultilocularCyst.Location, Converter={StaticResource RadioBoolConverter}, ConverterParameter=其他}"/>
-                                <TextBox Text="{Binding Report.MultilocularCyst.Location, UpdateSourceTrigger=PropertyChanged}" Width="100" Margin="8,0,0,0" Visibility="{Binding Report.MultilocularCyst.Location, Converter={StaticResource RadioToVis}, ConverterParameter=其他}"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <RadioButton GroupName="MultiLoc" Content="其他" IsChecked="{Binding Report.MultilocularCyst.Location, Converter={StaticResource RadioBoolConverter}, ConverterParameter=其他}"/>
+                                    <TextBox Text="{Binding Report.MultilocularCyst.LocationOther, UpdateSourceTrigger=PropertyChanged}" Width="100" Margin="8,0,0,0" Visibility="{Binding Report.MultilocularCyst.Location, Converter={StaticResource RadioToVis}, ConverterParameter=其他}"/>
+                                </StackPanel>
                             </WrapPanel>
                         </Grid>
                         
@@ -1299,8 +1407,8 @@
                             <CheckBox Content="内壁不规则" IsChecked="{Binding Report.MultilocularCyst.EchoIrregularInnerWall}"/>
                             <CheckBox Content="超过十个囊腔" IsChecked="{Binding Report.MultilocularCyst.EchoMoreThan10Locules}"/>
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="其他" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                <TextBox Text="{Binding Report.MultilocularCyst.EchoOther}" Width="100"/>
+                                <CheckBox Content="其他" IsChecked="{Binding Report.MultilocularCyst.HasEchoOther}"/>
+                                <TextBox Text="{Binding Report.MultilocularCyst.EchoOther, UpdateSourceTrigger=PropertyChanged}" Width="100" Margin="4,0,0,0" Visibility="{Binding Report.MultilocularCyst.HasEchoOther, Converter={StaticResource BoolToVis}}"/>
                             </StackPanel>
                         </WrapPanel>
 
@@ -1348,14 +1456,17 @@
                             <CheckBox Content="囊壁血流" IsChecked="{Binding Report.MultilocularCyst.FlowOnWall}"/>
                         </WrapPanel>
                     </StackPanel>
-                </ContentControl>
+                </Expander>
 
                 <!-- C. 存在实性成分的囊肿 -->
-                <ContentControl Style="{StaticResource Card}" Visibility="{Binding Report.HasSolidCyst, Converter={StaticResource BoolToVis}}">
+                <Expander Style="{StaticResource CollapsibleCard}" Visibility="{Binding Report.HasSolidCyst, Converter={StaticResource BoolToVis}}">
+                    <Expander.Header>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="4" Height="24" Background="White" CornerRadius="2" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                            <TextBlock Text="C. 存在实性成分的囊肿" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Expander.Header>
                     <StackPanel>
-                        <Border Background="#E3F2FD" CornerRadius="8" Padding="16,12" Margin="0,0,0,20">
-                            <TextBlock Text="C. 存在实性成分的囊肿" FontWeight="SemiBold" FontSize="18" Foreground="#1565C0"/>
-                        </Border>
                         
                         <Grid Margin="0,0,0,16">
                             <Grid.ColumnDefinitions>
@@ -1384,8 +1495,10 @@
                                 <RadioButton GroupName="SolidCystLoc" Content="右附件" IsChecked="{Binding Report.SolidCyst.Location, Converter={StaticResource RadioBoolConverter}, ConverterParameter=右附件}"/>
                                 <RadioButton GroupName="SolidCystLoc" Content="子宫后方" IsChecked="{Binding Report.SolidCyst.Location, Converter={StaticResource RadioBoolConverter}, ConverterParameter=子宫后方}"/>
                                 <RadioButton GroupName="SolidCystLoc" Content="子宫前方" IsChecked="{Binding Report.SolidCyst.Location, Converter={StaticResource RadioBoolConverter}, ConverterParameter=子宫前方}"/>
-                                <RadioButton GroupName="SolidCystLoc" Content="其他" IsChecked="{Binding Report.SolidCyst.Location, Converter={StaticResource RadioBoolConverter}, ConverterParameter=其他}"/>
-                                <TextBox Text="{Binding Report.SolidCyst.Location, UpdateSourceTrigger=PropertyChanged}" Width="100" Margin="8,0,0,0" Visibility="{Binding Report.SolidCyst.Location, Converter={StaticResource RadioToVis}, ConverterParameter=其他}"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <RadioButton GroupName="SolidCystLoc" Content="其他" IsChecked="{Binding Report.SolidCyst.Location, Converter={StaticResource RadioBoolConverter}, ConverterParameter=其他}"/>
+                                    <TextBox Text="{Binding Report.SolidCyst.LocationOther, UpdateSourceTrigger=PropertyChanged}" Width="100" Margin="8,0,0,0" Visibility="{Binding Report.SolidCyst.Location, Converter={StaticResource RadioToVis}, ConverterParameter=其他}"/>
+                                </StackPanel>
                             </WrapPanel>
                         </Grid>
 
@@ -1407,8 +1520,8 @@
                             <CheckBox Content="内见片状回声" IsChecked="{Binding Report.SolidCyst.EchoPatchy}"/>
                             <CheckBox Content="超过十个囊腔" IsChecked="{Binding Report.SolidCyst.EchoMoreThan10Locules}"/>
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="其他" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                <TextBox Text="{Binding Report.SolidCyst.EchoOther}" Width="100"/>
+                                <CheckBox Content="其他" IsChecked="{Binding Report.SolidCyst.HasEchoOther}"/>
+                                <TextBox Text="{Binding Report.SolidCyst.EchoOther, UpdateSourceTrigger=PropertyChanged}" Width="100" Margin="4,0,0,0" Visibility="{Binding Report.SolidCyst.HasEchoOther, Converter={StaticResource BoolToVis}}"/>
                             </StackPanel>
                         </WrapPanel>
                         
@@ -1584,14 +1697,17 @@
                             </WrapPanel>
                         </Grid>
                     </StackPanel>
-                </ContentControl>
+                </Expander>
 
                 <!-- D. 实性肿物 -->
-                <ContentControl Style="{StaticResource Card}" Visibility="{Binding Report.HasSolidMass, Converter={StaticResource BoolToVis}}">
+                <Expander Style="{StaticResource CollapsibleCard}" Visibility="{Binding Report.HasSolidMass, Converter={StaticResource BoolToVis}}">
+                    <Expander.Header>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="4" Height="24" Background="White" CornerRadius="2" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                            <TextBlock Text="D. 实性肿物" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Expander.Header>
                     <StackPanel>
-                        <Border Background="#E3F2FD" CornerRadius="8" Padding="16,12" Margin="0,0,0,20">
-                            <TextBlock Text="D. 实性肿物" FontWeight="SemiBold" FontSize="18" Foreground="#1565C0"/>
-                        </Border>
                         
                         <Grid Margin="0,0,0,16">
                             <Grid.ColumnDefinitions>
@@ -1620,8 +1736,10 @@
                                 <RadioButton GroupName="SolidMassLoc" Content="右附件" IsChecked="{Binding Report.SolidMass.Location, Converter={StaticResource RadioBoolConverter}, ConverterParameter=右附件}"/>
                                 <RadioButton GroupName="SolidMassLoc" Content="子宫后方" IsChecked="{Binding Report.SolidMass.Location, Converter={StaticResource RadioBoolConverter}, ConverterParameter=子宫后方}"/>
                                 <RadioButton GroupName="SolidMassLoc" Content="子宫前方" IsChecked="{Binding Report.SolidMass.Location, Converter={StaticResource RadioBoolConverter}, ConverterParameter=子宫前方}"/>
-                                <RadioButton GroupName="SolidMassLoc" Content="其他" IsChecked="{Binding Report.SolidMass.Location, Converter={StaticResource RadioBoolConverter}, ConverterParameter=其他}"/>
-                                <TextBox Text="{Binding Report.SolidMass.Location, UpdateSourceTrigger=PropertyChanged}" Width="100" Margin="8,0,0,0" Visibility="{Binding Report.SolidMass.Location, Converter={StaticResource RadioToVis}, ConverterParameter=其他}"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <RadioButton GroupName="SolidMassLoc" Content="其他" IsChecked="{Binding Report.SolidMass.Location, Converter={StaticResource RadioBoolConverter}, ConverterParameter=其他}"/>
+                                    <TextBox Text="{Binding Report.SolidMass.LocationOther, UpdateSourceTrigger=PropertyChanged}" Width="100" Margin="8,0,0,0" Visibility="{Binding Report.SolidMass.Location, Converter={StaticResource RadioToVis}, ConverterParameter=其他}"/>
+                                </StackPanel>
                             </WrapPanel>
                         </Grid>
 
@@ -1688,21 +1806,21 @@
                             </WrapPanel>
                         </Grid>
                     </StackPanel>
-                </ContentControl>
+                </Expander>
 
-                <!-- 五、合并积液 -->
-                <ContentControl Style="{StaticResource Card}">
+                <!-- 合并积液 -->
+                <Expander Style="{StaticResource CollapsibleCard}">
+                    <Expander.Header>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="4" Height="24" Background="White" CornerRadius="2" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                            <TextBlock Text="合并积液" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Expander.Header>
                     <StackPanel>
-                        <Border Style="{StaticResource SectionHeader}">
-                            <StackPanel Orientation="Horizontal">
-                                <Border Width="4" Height="24" Background="White" CornerRadius="2" VerticalAlignment="Center" Margin="0,0,12,0"/>
-                                <TextBlock Text="五、合并积液" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
 
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                            <RadioButton GroupName="Fluid" Content="无" IsChecked="{Binding Report.HasNoFluid, Converter={StaticResource RadioBoolConverter}, ConverterParameter=无}"/>
-                            <RadioButton GroupName="Fluid" Content="有（多选）：" IsChecked="{Binding Report.HasFluid, Converter={StaticResource RadioBoolConverter}, ConverterParameter=有}"/>
+                            <RadioButton GroupName="Fluid" Content="无" IsChecked="{Binding Report.HasNoFluid}"/>
+                            <RadioButton GroupName="Fluid" Content="有" IsChecked="{Binding Report.HasFluid}"/>
                         </StackPanel>
 
                         <StackPanel Visibility="{Binding Report.HasFluid, Converter={StaticResource BoolToVis}}">
@@ -1733,17 +1851,17 @@
                             </StackPanel>
                         </StackPanel>
                     </StackPanel>
-                </ContentControl>
+                </Expander>
 
-                <!-- 六、结论与备注区 -->
-                <ContentControl Style="{StaticResource Card}">
+                <!-- 结论与备注区 -->
+                <Expander Style="{StaticResource CollapsibleCard}">
+                    <Expander.Header>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="4" Height="24" Background="White" CornerRadius="2" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                            <TextBlock Text="结论与备注区" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Expander.Header>
                     <StackPanel>
-                        <Border Style="{StaticResource SectionHeader}">
-                            <StackPanel Orientation="Horizontal">
-                                <Border Width="4" Height="24" Background="White" CornerRadius="2" VerticalAlignment="Center" Margin="0,0,12,0"/>
-                                <TextBlock Text="六、结论与备注区" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
 
                         <!-- 超声提示 -->
                         <Border Background="#F0F7FF" CornerRadius="8" Padding="16,12" Margin="0,0,0,20">
@@ -1839,7 +1957,7 @@
                             <TextBox Text="{Binding Report.ReportDate, UpdateSourceTrigger=PropertyChanged}" Grid.Column="5" Width="150"/>
                         </Grid>
                     </StackPanel>
-                </ContentControl>
+                </Expander>
 
                 <Border Height="60"/>
 
@@ -1865,7 +1983,7 @@
             </GridSplitter>
 
             <!-- Right: Preview Panel -->
-            <Border Grid.Column="2" Background="{StaticResource Brush.Background}" BorderBrush="{StaticResource Brush.BorderLight}" BorderThickness="1,0,0,0">
+            <Border Grid.Column="2" Background="{StaticResource Brush.Background}" BorderBrush="{StaticResource Brush.BorderLight}" BorderThickness="1,0,0,0" Visibility="{Binding IsPreviewVisible, Converter={StaticResource BoolToVis}}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -1944,7 +2062,7 @@
                                        FontSize="14"
                                        Margin="0,0,8,0"/>
                                 <Button Content="✕" 
-                                       Command="{Binding TogglePreviewCommand}" 
+                                       Click="TogglePreview_Click"
                                        Background="Transparent" 
                                        Foreground="White" 
                                        BorderThickness="0" 

@@ -5,8 +5,164 @@ namespace SURS.App.Models
 {
     public class SursReport : ObservableObject
     {
+        public SursReport()
+        {
+            InitializeDateSelections();
+        }
+
         // Image Paths
         public ObservableCollection<string> ImagePaths { get; } = new ObservableCollection<string>();
+
+        // Date Selection Helpers
+        private ObservableCollection<int> _availableYears = new ObservableCollection<int>();
+        public ObservableCollection<int> AvailableYears 
+        { 
+            get => _availableYears; 
+            set => SetProperty(ref _availableYears, value);
+        }
+
+        private ObservableCollection<int> _availableMonths = new ObservableCollection<int>();
+        public ObservableCollection<int> AvailableMonths 
+        { 
+            get => _availableMonths; 
+            set => SetProperty(ref _availableMonths, value);
+        }
+
+        private ObservableCollection<int> _availableDays = new ObservableCollection<int>();
+        public ObservableCollection<int> AvailableDays 
+        { 
+            get => _availableDays; 
+            set => SetProperty(ref _availableDays, value);
+        }
+        
+        private int? _lmpYear;
+        public int? LmpYear
+        {
+            get => _lmpYear;
+            set 
+            {
+                if (SetProperty(ref _lmpYear, value))
+                {
+                    UpdateAvailableDays();
+                    UpdateLmpFromComponents();
+                }
+            }
+        }
+
+        private int? _lmpMonth;
+        public int? LmpMonth
+        {
+            get => _lmpMonth;
+            set 
+            {
+                if (SetProperty(ref _lmpMonth, value))
+                {
+                    UpdateAvailableDays();
+                    UpdateLmpFromComponents();
+                }
+            }
+        }
+
+        private int? _lmpDay;
+        public int? LmpDay
+        {
+            get => _lmpDay;
+            set 
+            {
+                if (SetProperty(ref _lmpDay, value))
+                {
+                    UpdateLmpFromComponents();
+                }
+            }
+        }
+
+        private bool _isUpdatingDate;
+
+        private void InitializeDateSelections()
+        {
+            // Years: 1950 to Next Year + 1
+            var currentYear = System.DateTime.Now.Year;
+            AvailableYears.Clear();
+            for (int i = 1950; i <= currentYear + 2; i++)
+            {
+                AvailableYears.Add(i);
+            }
+            
+            // Months: 1-12
+            AvailableMonths.Clear();
+            for (int i = 1; i <= 12; i++)
+            {
+                AvailableMonths.Add(i);
+            }
+            
+            UpdateAvailableDays();
+        }
+
+        private void UpdateAvailableDays()
+        {
+            var daysInMonth = 31;
+            if (LmpYear.HasValue && LmpMonth.HasValue)
+            {
+                try
+                {
+                    daysInMonth = System.DateTime.DaysInMonth(LmpYear.Value, LmpMonth.Value);
+                }
+                catch { }
+            }
+
+            if (AvailableDays.Count != daysInMonth)
+            {
+                if (AvailableDays.Count < daysInMonth)
+                {
+                    for (int i = AvailableDays.Count + 1; i <= daysInMonth; i++)
+                    {
+                        AvailableDays.Add(i);
+                    }
+                }
+                else
+                {
+                    for (int i = AvailableDays.Count; i > daysInMonth; i--)
+                    {
+                        AvailableDays.RemoveAt(i - 1);
+                    }
+                }
+            }
+            
+            // If current selected day is out of range, reset it
+            if (LmpDay.HasValue && LmpDay.Value > daysInMonth)
+            {
+                LmpDay = null;
+            }
+        }
+
+        private void UpdateLmpFromComponents()
+        {
+            if (_isUpdatingDate) return;
+            
+            if (LmpYear.HasValue && LmpMonth.HasValue && LmpDay.HasValue)
+            {
+                try 
+                {
+                    _isUpdatingDate = true;
+                    LastMenstrualPeriod = new System.DateTime(LmpYear.Value, LmpMonth.Value, LmpDay.Value);
+                }
+                catch
+                {
+                    // Invalid date, ensure consistency
+                    LastMenstrualPeriod = null;
+                }
+                finally
+                {
+                    _isUpdatingDate = false;
+                }
+            }
+            else
+            {
+                 _isUpdatingDate = true;
+                 LastMenstrualPeriod = null;
+                 _isUpdatingDate = false;
+            }
+        }
 
         // Patient Info & Header
         private string _hospitalName = "首都医科大学附属北京妇产医院";
@@ -28,6 +184,13 @@ namespace SURS.App.Models
         { 
             get => _registrationNo;
             set => SetProperty(ref _registrationNo, value);
+        }
+
+        private string _serialNo = string.Empty;
+        public string SerialNo 
+        { 
+            get => _serialNo;
+            set => SetProperty(ref _serialNo, value);
         }
 
         private string _gender = "女";
@@ -63,6 +226,20 @@ namespace SURS.App.Models
         { 
             get => _inpatientNo;
             set => SetProperty(ref _inpatientNo, value);
+        }
+
+        private string _bedNo = string.Empty;
+        public string BedNo 
+        { 
+            get => _bedNo;
+            set => SetProperty(ref _bedNo, value);
+        }
+
+        private string _applyingPhysician = string.Empty;
+        public string ApplyingPhysician 
+        { 
+            get => _applyingPhysician;
+            set => SetProperty(ref _applyingPhysician, value);
         }
 
         private string _examItem = "经阴道彩色多普勒超声检查";
@@ -179,8 +356,10 @@ namespace SURS.App.Models
             get => FluidStatus == "无";
             set
             {
-                if (value) FluidStatus = "无";
-                OnPropertyChanged();
+                if (!value) return;
+                FluidStatus = "无";
+                OnPropertyChanged(nameof(HasNoFluid));
+                OnPropertyChanged(nameof(HasFluid));
             }
         }
         
@@ -189,8 +368,10 @@ namespace SURS.App.Models
             get => FluidStatus == "有";
             set
             {
-                if (value) FluidStatus = "有";
-                OnPropertyChanged();
+                if (!value) return;
+                FluidStatus = "有";
+                OnPropertyChanged(nameof(HasNoFluid));
+                OnPropertyChanged(nameof(HasFluid));
             }
         }
         public ObservableCollection<FluidLocation> FluidLocations { get; } = new ObservableCollection<FluidLocation>();
@@ -906,14 +1087,46 @@ namespace SURS.App.Models
         public string EchoOther 
         { 
             get => _echoOther;
-            set => SetProperty(ref _echoOther, value);
+            set
+            {
+                if (SetProperty(ref _echoOther, value) && !string.IsNullOrWhiteSpace(value) && !HasEchoOther)
+                {
+                    HasEchoOther = true;
+                }
+            }
+        }
+
+        private bool _hasEchoOther;
+        public bool HasEchoOther
+        {
+            get => _hasEchoOther;
+            set
+            {
+                if (SetProperty(ref _hasEchoOther, value) && !value)
+                {
+                    EchoOther = string.Empty;
+                }
+            }
         }
         
         private string _location = string.Empty; // 位置（单选）
         public new string Location
         {
             get => _location;
-            set => SetProperty(ref _location, value);
+            set
+            {
+                if (SetProperty(ref _location, value) && value != "其他")
+                {
+                    LocationOther = string.Empty;
+                }
+            }
+        }
+
+        private string _locationOther = string.Empty;
+        public string LocationOther
+        {
+            get => _locationOther;
+            set => SetProperty(ref _locationOther, value);
         }
         
         private new string _boundary = string.Empty; // 规则/不规则
@@ -944,7 +1157,20 @@ namespace SURS.App.Models
         public new string Location
         {
             get => _location;
-            set => SetProperty(ref _location, value);
+            set
+            {
+                if (SetProperty(ref _location, value) && value != "其他")
+                {
+                    LocationOther = string.Empty;
+                }
+            }
+        }
+
+        private string _locationOther = string.Empty;
+        public string LocationOther
+        {
+            get => _locationOther;
+            set => SetProperty(ref _locationOther, value);
         }
         
         // Echo properties
@@ -1057,7 +1283,26 @@ namespace SURS.App.Models
         public string EchoOther 
         { 
             get => _echoOther;
-            set => SetProperty(ref _echoOther, value);
+            set
+            {
+                if (SetProperty(ref _echoOther, value) && !string.IsNullOrWhiteSpace(value) && !HasEchoOther)
+                {
+                    HasEchoOther = true;
+                }
+            }
+        }
+
+        private bool _hasEchoOther;
+        public bool HasEchoOther
+        {
+            get => _hasEchoOther;
+            set
+            {
+                if (SetProperty(ref _hasEchoOther, value) && !value)
+                {
+                    EchoOther = string.Empty;
+                }
+            }
         }
 
         private bool _flowOnSeptum;
@@ -1201,7 +1446,26 @@ namespace SURS.App.Models
         public string EchoOther 
         { 
             get => _echoOther;
-            set => SetProperty(ref _echoOther, value);
+            set
+            {
+                if (SetProperty(ref _echoOther, value) && !string.IsNullOrWhiteSpace(value) && !HasEchoOther)
+                {
+                    HasEchoOther = true;
+                }
+            }
+        }
+
+        private bool _hasEchoOther;
+        public bool HasEchoOther
+        {
+            get => _hasEchoOther;
+            set
+            {
+                if (SetProperty(ref _hasEchoOther, value) && !value)
+                {
+                    EchoOther = string.Empty;
+                }
+            }
         }
 
         // Papillary
@@ -1408,7 +1672,20 @@ namespace SURS.App.Models
         public new string Location
         {
             get => _location;
-            set => SetProperty(ref _location, value);
+            set
+            {
+                if (SetProperty(ref _location, value) && value != "其他")
+                {
+                    LocationOther = string.Empty;
+                }
+            }
+        }
+
+        private string _locationOther = string.Empty;
+        public string LocationOther
+        {
+            get => _locationOther;
+            set => SetProperty(ref _locationOther, value);
         }
         
         private new string _boundary = string.Empty;
@@ -1440,6 +1717,13 @@ namespace SURS.App.Models
         {
             get => _echoType;
             set => SetProperty(ref _echoType, value);
+        }
+
+        private string _locationOther = string.Empty;
+        public string LocationOther
+        {
+            get => _locationOther;
+            set => SetProperty(ref _locationOther, value);
         }
     }
 

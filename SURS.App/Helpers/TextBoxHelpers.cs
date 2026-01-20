@@ -10,6 +10,9 @@ namespace SURS.App.Helpers
         public static readonly DependencyProperty IsNumericProperty =
             DependencyProperty.RegisterAttached("IsNumeric", typeof(bool), typeof(TextBoxHelpers), new PropertyMetadata(false, OnIsNumericChanged));
 
+        public static readonly DependencyProperty NumericOnlyProperty =
+            DependencyProperty.RegisterAttached("NumericOnly", typeof(bool), typeof(TextBoxHelpers), new PropertyMetadata(false, OnNumericOnlyChanged));
+
         public static bool GetIsNumeric(DependencyObject obj)
         {
             return (bool)obj.GetValue(IsNumericProperty);
@@ -18,6 +21,33 @@ namespace SURS.App.Helpers
         public static void SetIsNumeric(DependencyObject obj, bool value)
         {
             obj.SetValue(IsNumericProperty, value);
+        }
+
+        public static bool GetNumericOnly(DependencyObject obj)
+        {
+            return (bool)obj.GetValue(NumericOnlyProperty);
+        }
+
+        public static void SetNumericOnly(DependencyObject obj, bool value)
+        {
+            obj.SetValue(NumericOnlyProperty, value);
+        }
+
+        private static void OnNumericOnlyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            if (d is TextBox textBox)
+            {
+                if ((bool)e.NewValue)
+                {
+                    textBox.PreviewTextInput += TextBox_PreviewTextInput;
+                    DataObject.AddPastingHandler(textBox, TextBox_Pasting);
+                }
+                else
+                {
+                    textBox.PreviewTextInput -= TextBox_PreviewTextInput;
+                    DataObject.RemovePastingHandler(textBox, TextBox_Pasting);
+                }
+            }
         }
 
         private static void OnIsNumericChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
