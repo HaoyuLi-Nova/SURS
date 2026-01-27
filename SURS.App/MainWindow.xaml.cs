@@ -64,8 +64,7 @@ namespace SURS.App
         {
             if (e.PropertyName == nameof(MainViewModel.IsPreviewVisible))
             {
-                var vm = sender as MainViewModel;
-                if (vm != null)
+                if (sender is MainViewModel vm)
                 {
                     ApplyPreviewVisibility(vm.IsPreviewVisible, isInitial: false);
                 }
@@ -146,10 +145,10 @@ namespace SURS.App
 
         private void PreviewScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
-            if (sender is ScrollViewer scrollViewer)
+            // Remove unused 'scrollViewer' assignment
+            if (sender is ScrollViewer)
             {
-                var viewModel = DataContext as MainViewModel;
-                if (viewModel != null)
+                if (DataContext is MainViewModel viewModel)
                 {
                     // 处理缩放
                     bool handled = viewModel.HandleMouseWheelZoom(e.Delta, Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl));
@@ -166,9 +165,8 @@ namespace SURS.App
             if (sender is ScrollViewer scrollViewer && PreviewImageControl != null)
             {
                 // 检查是否点击在图片上，并且图片已放大超过基准值（需要拖拽）
-                var viewModel = DataContext as MainViewModel;
                 const double baseZoom = 0.25; // 基准值（100%）
-                if (viewModel != null && viewModel.PreviewZoom > baseZoom)
+                if (DataContext is MainViewModel viewModel && viewModel.PreviewZoom > baseZoom)
                 {
                     var imagePosition = e.GetPosition(PreviewImageControl);
                     // 检查点击是否在图片范围内
@@ -214,9 +212,8 @@ namespace SURS.App
             else if (sender is ScrollViewer scrollViewer2 && PreviewImageControl != null)
             {
                 // 更新鼠标光标：当缩放大于基准值时显示手型光标
-                var viewModel = DataContext as MainViewModel;
                 const double baseZoom = 0.25; // 基准值（100%）
-                if (viewModel != null && viewModel.PreviewZoom > baseZoom)
+                if (DataContext is MainViewModel viewModel && viewModel.PreviewZoom > baseZoom)
                 {
                     var imagePosition = e.GetPosition(PreviewImageControl);
                     if (imagePosition.X >= 0 && imagePosition.Y >= 0 && 

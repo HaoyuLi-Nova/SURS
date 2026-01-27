@@ -716,8 +716,30 @@
                     </StackPanel>
                 </Expander>
 
-                <!-- 子宫部分 -->
+                <!-- 模板选择 -->
                 <Expander Style="{StaticResource CollapsibleCard}">
+                    <Expander.Header>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="4" Height="24" Background="White" CornerRadius="2" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                            <TextBlock Text="模板选择" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Expander.Header>
+                    <StackPanel>
+                        <Border Background="#E8F5E9" CornerRadius="8" Padding="16,12" Margin="0,0,0,20">
+                            <StackPanel>
+                                <TextBlock Text="请选择需要填写的模板内容（可多选）" FontWeight="SemiBold" FontSize="16" Foreground="#2E7D32" Margin="0,0,0,12"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <CheckBox Content="子宫" IsChecked="{Binding Report.IncludeUterus}" Margin="0,0,20,0"/>
+                                    <CheckBox Content="子宫内膜" IsChecked="{Binding Report.IncludeEndometrium}" Margin="0,0,20,0"/>
+                                    <CheckBox Content="卵巢" IsChecked="{Binding Report.IncludeOvary}" Margin="0,0,20,0"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Expander>
+
+                <!-- 子宫部分 -->
+                <Expander Style="{StaticResource CollapsibleCard}" Visibility="{Binding Report.IncludeUterus, Converter={StaticResource BoolToVis}}">
                     <Expander.Header>
                         <StackPanel Orientation="Horizontal">
                             <Border Width="4" Height="24" Background="White" CornerRadius="2" VerticalAlignment="Center" Margin="0,0,12,0"/>
@@ -725,11 +747,9 @@
                         </StackPanel>
                     </Expander.Header>
                     <StackPanel>
-
-                        <!-- 子宫基本声像 -->
-                        <Border Background="#F0F7FF" CornerRadius="8" Padding="16,12" Margin="0,0,0,20">
-                            <TextBlock Text="子宫基本声像" FontWeight="SemiBold" FontSize="16" Foreground="{StaticResource Brush.Primary}"/>
-                        </Border>
+                            <Border Background="#F0F7FF" CornerRadius="8" Padding="16,12" Margin="0,0,0,20">
+                                <TextBlock Text="子宫基本声像" FontWeight="SemiBold" FontSize="16" Foreground="{StaticResource Brush.Primary}"/>
+                            </Border>
 
                         <Grid Margin="0,0,0,20">
                             <Grid.ColumnDefinitions>
@@ -768,23 +788,31 @@
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="子宫颈大小：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
                             <StackPanel Orientation="Horizontal" Grid.Column="1">
-                                <TextBox helpers:TextBoxHelpers.IsNumeric="True" Text="{Binding Report.Uterus.CervixLength, UpdateSourceTrigger=PropertyChanged}" Width="50"/>
-                                <TextBlock Text="×" Margin="4,0"/>
-                                <TextBox helpers:TextBoxHelpers.IsNumeric="True" Text="{Binding Report.Uterus.CervixAP, UpdateSourceTrigger=PropertyChanged}" Width="50"/>
-                                <TextBlock Text="cm" Style="{StaticResource Text.Unit}" Margin="4,0,0,0"/>
-                                <TextBlock Text="（长径、前后径）" Style="{StaticResource Text.Unit}" FontSize="11" Margin="8,0,0,0"/>
+                                <CheckBox Content="测量" IsChecked="{Binding Report.Uterus.ShouldMeasureCervix}" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                                <StackPanel Orientation="Horizontal" IsEnabled="{Binding Report.Uterus.ShouldMeasureCervix}">
+                                    <TextBox helpers:TextBoxHelpers.IsNumeric="True" Text="{Binding Report.Uterus.CervixLength, UpdateSourceTrigger=PropertyChanged}" Width="50"/>
+                                    <TextBlock Text="×" Margin="4,0"/>
+                                    <TextBox helpers:TextBoxHelpers.IsNumeric="True" Text="{Binding Report.Uterus.CervixAP, UpdateSourceTrigger=PropertyChanged}" Width="50"/>
+                                    <TextBlock Text="cm" Style="{StaticResource Text.Unit}" Margin="4,0,0,0"/>
+                                    <TextBlock Text="（长径、前后径）" Style="{StaticResource Text.Unit}" FontSize="11" Margin="8,0,0,0"/>
+                                </StackPanel>
                             </StackPanel>
                         </Grid>
 
-                        <TextBlock Text="子宫肌层回声：" Style="{StaticResource Text.Label}" Margin="0,0,0,8"/>
-                        <StackPanel Margin="0,0,0,12">
-                            <RadioButton GroupName="MyometriumEcho" Content="均匀" IsChecked="{Binding Report.Uterus.MyometriumEcho, Converter={StaticResource RadioBoolConverter}, ConverterParameter=均匀}" Margin="0,0,0,8"/>
-                            
-                            <StackPanel>
-                                <RadioButton GroupName="MyometriumEcho" Content="不均" IsChecked="{Binding Report.Uterus.MyometriumEcho, Converter={StaticResource RadioBoolConverter}, ConverterParameter=不均}" x:Name="RbNonUniform"/>
-                                
-                                <!-- Non-uniform Options -->
-                                <StackPanel Margin="24,8,0,0" Visibility="{Binding IsChecked, ElementName=RbNonUniform, Converter={StaticResource BoolToVis}}">
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="子宫肌层回声：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                            <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                                <RadioButton GroupName="MyometriumEcho" Content="均匀" IsChecked="{Binding Report.Uterus.MyometriumEcho, Converter={StaticResource RadioBoolConverter}, ConverterParameter=均匀}" Margin="0,0,16,0"/>
+                                <RadioButton GroupName="MyometriumEcho" Content="不均" IsChecked="{Binding Report.Uterus.MyometriumEcho, Converter={StaticResource RadioBoolConverter}, ConverterParameter=不均}" x:Name="RbNonUniform"  Margin="0,0,16,0"/>
+                            </WrapPanel>
+                        </Grid>
+                        
+                        <!-- Non-uniform Options -->
+                        <StackPanel Margin="24,8,0,12" Visibility="{Binding IsChecked, ElementName=RbNonUniform, Converter={StaticResource BoolToVis}}">
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                                         <CheckBox Content="局限性增厚" IsChecked="{Binding Report.Uterus.MyometriumThickeningFocal}" Margin="0,0,16,0"/>
                                         <CheckBox Content="弥漫性增厚" IsChecked="{Binding Report.Uterus.MyometriumThickeningDiffuse}" Margin="0,0,16,0"/>
@@ -800,58 +828,196 @@
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto"/>
                                                     <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="20"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="*"/>
                                                 </Grid.ColumnDefinitions>
                                                 <TextBlock Text="数量：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
-                                                <ComboBox SelectedValue="{Binding Report.Uterus.NoduleCount, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Content" Grid.Column="1">
+                                                <ComboBox SelectedValue="{Binding Report.Uterus.NoduleCount, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Content" Grid.Column="1" x:Name="CbNoduleCount">
                                                      <ComboBoxItem Content="单发"/>
                                                      <ComboBoxItem Content="多发"/>
                                                 </ComboBox>
-                                                
-                                                <TextBlock Text="类型：" Style="{StaticResource Text.Label}" Grid.Column="3"/>
-                                                <ComboBox SelectedValue="{Binding Report.Uterus.NoduleType, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Content" Grid.Column="4">
-                                                     <ComboBoxItem Content="肌壁间"/>
-                                                     <ComboBoxItem Content="浆膜下"/>
-                                                     <ComboBoxItem Content="黏膜下"/>
-                                                     <ComboBoxItem Content="阔韧带"/>
-                                                     <ComboBoxItem Content="宫颈"/>
-                                                </ComboBox>
                                             </Grid>
 
-                                            <Grid Margin="0,0,0,12">
+                                            <!-- 多发时选择报告方式 -->
+                                            <Grid Margin="0,0,0,12" Visibility="{Binding SelectedValue, ElementName=CbNoduleCount, Converter={StaticResource RadioToVis}, ConverterParameter=多发}">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto"/>
                                                     <ColumnDefinition Width="*"/>
                                                 </Grid.ColumnDefinitions>
-                                                <TextBlock Text="位置：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
-                                                <ComboBox SelectedValue="{Binding Report.Uterus.NoduleLocation, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Content" Grid.Column="1" IsEditable="True">
-                                                     <ComboBoxItem Content="前壁"/>
-                                                     <ComboBoxItem Content="后壁"/>
-                                                     <ComboBoxItem Content="宫底"/>
-                                                     <ComboBoxItem Content="左侧壁"/>
-                                                     <ComboBoxItem Content="右侧壁"/>
-                                                </ComboBox>
-                                            </Grid>
-
-                                            <Grid Margin="0,0,0,12">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Text="大小：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                                                <TextBlock Text="报告方式：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
                                                 <StackPanel Orientation="Horizontal" Grid.Column="1">
-                                                    <TextBox helpers:TextBoxHelpers.IsNumeric="True" Text="{Binding Report.Uterus.NoduleLength, UpdateSourceTrigger=PropertyChanged}" Width="50"/>
-                                                    <TextBlock Text="×" Margin="4,0"/>
-                                                    <TextBox helpers:TextBoxHelpers.IsNumeric="True" Text="{Binding Report.Uterus.NoduleWidth, UpdateSourceTrigger=PropertyChanged}" Width="50"/>
-                                                    <TextBlock Text="×" Margin="4,0"/>
-                                                    <TextBox helpers:TextBoxHelpers.IsNumeric="True" Text="{Binding Report.Uterus.NoduleHeight, UpdateSourceTrigger=PropertyChanged}" Width="50"/>
-                                                    <TextBlock Text="cm" Style="{StaticResource Text.Unit}"/>
+                                                    <RadioButton GroupName="NoduleReportMode" Content="只测量较大" IsChecked="{Binding Report.Uterus.MeasureOnlyLargest}" Margin="0,0,16,0"/>
+                                                    <RadioButton GroupName="NoduleReportMode" Content="全部写出" IsChecked="{Binding Report.Uterus.MeasureOnlyLargest, Converter={StaticResource RadioBoolConverter}, ConverterParameter=False}"/>
                                                 </StackPanel>
                                             </Grid>
 
-                                            <Grid>
+                                            <!-- 单发或多发全部写出时的第一个结节 -->
+                                            <StackPanel>
+                                                <StackPanel.Style>
+                                                    <Style TargetType="StackPanel">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Report.Uterus.MeasureOnlyLargest}" Value="True">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </StackPanel.Style>
+                                                <TextBlock Text="结节1：" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{StaticResource Brush.TextSecondary}"/>
+                                                
+                                                <Grid Margin="0,0,0,12">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="位置：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                                                    <ComboBox SelectedValue="{Binding Report.Uterus.NoduleLocation, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Content" Grid.Column="1" IsEditable="True">
+                                                         <ComboBoxItem Content="前壁"/>
+                                                         <ComboBoxItem Content="后壁"/>
+                                                         <ComboBoxItem Content="宫底"/>
+                                                         <ComboBoxItem Content="左侧壁"/>
+                                                         <ComboBoxItem Content="右侧壁"/>
+                                                    </ComboBox>
+                                                </Grid>
+
+                                                <Grid Margin="0,0,0,12">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="大小：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                                                    <StackPanel Orientation="Horizontal" Grid.Column="1">
+                                                        <TextBox helpers:TextBoxHelpers.IsNumeric="True" Text="{Binding Report.Uterus.NoduleLength, UpdateSourceTrigger=PropertyChanged}" Width="50"/>
+                                                        <TextBlock Text="×" Margin="4,0"/>
+                                                        <TextBox helpers:TextBoxHelpers.IsNumeric="True" Text="{Binding Report.Uterus.NoduleWidth, UpdateSourceTrigger=PropertyChanged}" Width="50"/>
+                                                        <TextBlock Text="×" Margin="4,0"/>
+                                                        <TextBox helpers:TextBoxHelpers.IsNumeric="True" Text="{Binding Report.Uterus.NoduleHeight, UpdateSourceTrigger=PropertyChanged}" Width="50"/>
+                                                        <TextBlock Text="cm" Style="{StaticResource Text.Unit}"/>
+                                                    </StackPanel>
+                                                </Grid>
+
+                                                <Grid Margin="0,0,0,12">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="回声：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                                                    <ComboBox SelectedValue="{Binding Report.Uterus.NoduleEcho, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Content" Grid.Column="1">
+                                                         <ComboBoxItem Content="低回声"/>
+                                                         <ComboBoxItem Content="等回声"/>
+                                                         <ComboBoxItem Content="高回声"/>
+                                                    </ComboBox>
+                                                </Grid>
+                                            </StackPanel>
+
+                                            <!-- 多发全部写出时的第二个结节 -->
+                                            <StackPanel Margin="0,12,0,0">
+                                                <StackPanel.Style>
+                                                    <Style TargetType="StackPanel">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Report.Uterus.MeasureOnlyLargest}" Value="True">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </StackPanel.Style>
+                                                <TextBlock Text="结节2：" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{StaticResource Brush.TextSecondary}" Visibility="{Binding SelectedValue, ElementName=CbNoduleCount, Converter={StaticResource RadioToVis}, ConverterParameter=多发}"/>
+                                                
+                                                <Grid Margin="0,0,0,12" Visibility="{Binding SelectedValue, ElementName=CbNoduleCount, Converter={StaticResource RadioToVis}, ConverterParameter=多发}">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="位置：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                                                    <ComboBox SelectedValue="{Binding Report.Uterus.SecondNoduleLocation, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Content" Grid.Column="1" IsEditable="True">
+                                                         <ComboBoxItem Content="前壁"/>
+                                                         <ComboBoxItem Content="后壁"/>
+                                                         <ComboBoxItem Content="宫底"/>
+                                                         <ComboBoxItem Content="左侧壁"/>
+                                                         <ComboBoxItem Content="右侧壁"/>
+                                                    </ComboBox>
+                                                </Grid>
+
+                                                <Grid Margin="0,0,0,12" Visibility="{Binding SelectedValue, ElementName=CbNoduleCount, Converter={StaticResource RadioToVis}, ConverterParameter=多发}">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="大小：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                                                    <StackPanel Orientation="Horizontal" Grid.Column="1">
+                                                        <TextBox helpers:TextBoxHelpers.IsNumeric="True" Text="{Binding Report.Uterus.SecondNoduleLength, UpdateSourceTrigger=PropertyChanged}" Width="50"/>
+                                                        <TextBlock Text="×" Margin="4,0"/>
+                                                        <TextBox helpers:TextBoxHelpers.IsNumeric="True" Text="{Binding Report.Uterus.SecondNoduleWidth, UpdateSourceTrigger=PropertyChanged}" Width="50"/>
+                                                        <TextBlock Text="×" Margin="4,0"/>
+                                                        <TextBox helpers:TextBoxHelpers.IsNumeric="True" Text="{Binding Report.Uterus.SecondNoduleHeight, UpdateSourceTrigger=PropertyChanged}" Width="50"/>
+                                                        <TextBlock Text="cm" Style="{StaticResource Text.Unit}"/>
+                                                    </StackPanel>
+                                                </Grid>
+
+                                                <Grid Margin="0,0,0,12" Visibility="{Binding SelectedValue, ElementName=CbNoduleCount, Converter={StaticResource RadioToVis}, ConverterParameter=多发}">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="回声：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                                                    <ComboBox SelectedValue="{Binding Report.Uterus.SecondNoduleEcho, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Content" Grid.Column="1">
+                                                         <ComboBoxItem Content="低回声"/>
+                                                         <ComboBoxItem Content="等回声"/>
+                                                         <ComboBoxItem Content="高回声"/>
+                                                    </ComboBox>
+                                                </Grid>
+                                            </StackPanel>
+
+                                            <!-- 多发只测量较大时 -->
+                                            <StackPanel Margin="0,12,0,0" Visibility="{Binding Report.Uterus.MeasureOnlyLargest, Converter={StaticResource BoolToVis}}">
+                                                <TextBlock Text="较大结节：" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{StaticResource Brush.TextSecondary}" Visibility="{Binding SelectedValue, ElementName=CbNoduleCount, Converter={StaticResource RadioToVis}, ConverterParameter=多发}"/>
+                                                
+                                                <Grid Margin="0,0,0,12" Visibility="{Binding SelectedValue, ElementName=CbNoduleCount, Converter={StaticResource RadioToVis}, ConverterParameter=多发}">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="位置：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                                                    <ComboBox SelectedValue="{Binding Report.Uterus.LargestNoduleLocation, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Content" Grid.Column="1" IsEditable="True">
+                                                         <ComboBoxItem Content="前壁"/>
+                                                         <ComboBoxItem Content="后壁"/>
+                                                         <ComboBoxItem Content="宫底"/>
+                                                         <ComboBoxItem Content="左侧壁"/>
+                                                         <ComboBoxItem Content="右侧壁"/>
+                                                    </ComboBox>
+                                                </Grid>
+
+                                                <Grid Margin="0,0,0,12" Visibility="{Binding SelectedValue, ElementName=CbNoduleCount, Converter={StaticResource RadioToVis}, ConverterParameter=多发}">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="大小：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                                                    <StackPanel Orientation="Horizontal" Grid.Column="1">
+                                                        <TextBox helpers:TextBoxHelpers.IsNumeric="True" Text="{Binding Report.Uterus.LargestNoduleLength, UpdateSourceTrigger=PropertyChanged}" Width="50"/>
+                                                        <TextBlock Text="×" Margin="4,0"/>
+                                                        <TextBox helpers:TextBoxHelpers.IsNumeric="True" Text="{Binding Report.Uterus.LargestNoduleWidth, UpdateSourceTrigger=PropertyChanged}" Width="50"/>
+                                                        <TextBlock Text="×" Margin="4,0"/>
+                                                        <TextBox helpers:TextBoxHelpers.IsNumeric="True" Text="{Binding Report.Uterus.LargestNoduleHeight, UpdateSourceTrigger=PropertyChanged}" Width="50"/>
+                                                        <TextBlock Text="cm" Style="{StaticResource Text.Unit}"/>
+                                                    </StackPanel>
+                                                </Grid>
+
+                                                <Grid Margin="0,0,0,12" Visibility="{Binding SelectedValue, ElementName=CbNoduleCount, Converter={StaticResource RadioToVis}, ConverterParameter=多发}">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="回声：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                                                    <ComboBox SelectedValue="{Binding Report.Uterus.LargestNoduleEcho, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Content" Grid.Column="1">
+                                                         <ComboBoxItem Content="低回声"/>
+                                                         <ComboBoxItem Content="等回声"/>
+                                                         <ComboBoxItem Content="高回声"/>
+                                                    </ComboBox>
+                                                </Grid>
+                                            </StackPanel>
+
+                                            <!-- 边界和内呈（可选） -->
+                                            <Grid Margin="0,0,0,12">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto"/>
                                                     <ColumnDefinition Width="*"/>
@@ -859,32 +1025,38 @@
                                                     <ColumnDefinition Width="Auto"/>
                                                     <ColumnDefinition Width="*"/>
                                                 </Grid.ColumnDefinitions>
-                                                <TextBlock Text="回声：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
-                                                <ComboBox SelectedValue="{Binding Report.Uterus.NoduleEcho, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Content" Grid.Column="1">
-                                                     <ComboBoxItem Content="低回声"/>
-                                                     <ComboBoxItem Content="等回声"/>
-                                                     <ComboBoxItem Content="高回声"/>
-                                                     <ComboBoxItem Content="混合回声"/>
-                                                </ComboBox>
-                                                
-                                                <TextBlock Text="边界：" Style="{StaticResource Text.Label}" Grid.Column="3"/>
-                                                <ComboBox SelectedValue="{Binding Report.Uterus.NoduleBoundary, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Content" Grid.Column="4">
-                                                     <ComboBoxItem Content="清晰"/>
-                                                     <ComboBoxItem Content="不清"/>
+                                                <TextBlock Text="边界：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                                                <ComboBox SelectedValue="{Binding Report.Uterus.NoduleBoundary, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Content" Grid.Column="1" IsEditable="True">
+                                                     <ComboBoxItem Content="规则"/>
+                                                     <ComboBoxItem Content="不规则"/>
                                                 </ComboBox>
                                             </Grid>
+
+                                            <!-- 外突和压迫宫腔选项 -->
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                                <CheckBox Content="是否外突" IsChecked="{Binding Report.Uterus.NoduleProtrudes}" Margin="0,0,16,0"/>
+                                                <CheckBox Content="是否压迫宫腔" IsChecked="{Binding Report.Uterus.NoduleCompressesCavity}"/>
+                                            </StackPanel>
                                         </StackPanel>
                                     </Border>
-                                </StackPanel>
-                            </StackPanel>
                         </StackPanel>
+                    </StackPanel>
+                </Expander>
 
-                        <!-- 子宫内膜 -->
-                        <Border Background="#F0F7FF" CornerRadius="8" Padding="16,12" Margin="0,20,0,20">
+                <!-- 子宫内膜部分 -->
+                <Expander Style="{StaticResource CollapsibleCard}" Visibility="{Binding Report.IncludeEndometrium, Converter={StaticResource BoolToVis}}">
+                    <Expander.Header>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="4" Height="24" Background="White" CornerRadius="2" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                            <TextBlock Text="子宫内膜部分" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Expander.Header>
+                    <StackPanel>
+                        <Border Background="#F0F7FF" CornerRadius="8" Padding="16,12" Margin="0,0,0,20">
                             <TextBlock Text="子宫内膜" FontWeight="SemiBold" FontSize="16" Foreground="{StaticResource Brush.Primary}"/>
                         </Border>
 
-                        <Grid Margin="0,0,0,20">
+                            <Grid Margin="0,0,0,20">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
@@ -903,6 +1075,7 @@
                                     </TextBox.Style>
                                 </TextBox>
                                 <TextBlock Text="cm" Style="{StaticResource Text.Unit}" Margin="4,0,12,0"/>
+                                <CheckBox Content="单层" IsChecked="{Binding Report.Endometrium.IsSingleLayer}" Margin="0,0,12,0"/>
                                 <TextBlock Text="|" Margin="0,0,12,0" VerticalAlignment="Center"/>
                                 <CheckBox Content="无法测量" IsChecked="{Binding Report.Endometrium.CannotMeasure}" Margin="0"/>
                             </StackPanel>
@@ -981,13 +1154,16 @@
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="血流信号：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
-                            <WrapPanel Grid.Column="1" VerticalAlignment="Center">
-                                <RadioButton GroupName="EndoFlow" Content="无血流信号" IsChecked="{Binding Report.Endometrium.HasNoFlow}"/>
-                                <RadioButton GroupName="EndoFlow" Content="有血流信号" IsChecked="{Binding Report.Endometrium.HasFlow}"/>
-                            </WrapPanel>
+                            <StackPanel Orientation="Horizontal" Grid.Column="1">
+                                <CheckBox Content="测量" IsChecked="{Binding Report.Endometrium.ShouldMeasureFlow}" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                                <StackPanel Orientation="Horizontal" IsEnabled="{Binding Report.Endometrium.ShouldMeasureFlow}">
+                                    <RadioButton GroupName="EndoFlow" Content="无血流信号" IsChecked="{Binding Report.Endometrium.HasNoFlow}"/>
+                                    <RadioButton GroupName="EndoFlow" Content="有血流信号" IsChecked="{Binding Report.Endometrium.HasFlow}"/>
+                                </StackPanel>
+                            </StackPanel>
                         </Grid>
 
-                        <StackPanel Visibility="{Binding Report.Endometrium.HasFlow, Converter={StaticResource BoolToVis}}" Margin="0,0,0,20">
+                        <StackPanel Visibility="{Binding Report.Endometrium.HasFlow, Converter={StaticResource BoolToVis}}" IsEnabled="{Binding Report.Endometrium.ShouldMeasureFlow}" Margin="0,0,0,20">
                             <Grid Margin="0,0,0,12">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
@@ -1047,18 +1223,11 @@
                                 </StackPanel>
                             </Grid>
                         </StackPanel>
-                    </StackPanel>
-                </Expander>
 
-                <!-- 三、宫腔占位性病变 -->
-                <Expander Style="{StaticResource CollapsibleCard}">
-                    <Expander.Header>
-                        <StackPanel Orientation="Horizontal">
-                            <Border Width="4" Height="24" Background="White" CornerRadius="2" VerticalAlignment="Center" Margin="0,0,12,0"/>
-                            <TextBlock Text="宫腔占位性病变" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Expander.Header>
-                    <StackPanel>
+                        <!-- 宫腔占位性病变（属于子宫内膜部分） -->
+                        <Border Background="#F0F7FF" CornerRadius="8" Padding="16,12" Margin="0,20,0,20">
+                            <TextBlock Text="宫腔占位性病变" FontWeight="SemiBold" FontSize="16" Foreground="{StaticResource Brush.Primary}"/>
+                        </Border>
 
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
                             <TextBlock Text="占位性病变：" Style="{StaticResource Text.Label}" Margin="0,0,16,0"/>
@@ -1090,7 +1259,7 @@
                                             <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="病变位置：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                                        <TextBlock Text="病变位置（可选）：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
                                         <TextBox Text="{Binding Report.Cavity.Location, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1"/>
                                     </Grid>
 
@@ -1226,7 +1395,7 @@
                 </Expander>
 
                 <!-- 卵巢与附件部分 -->
-                <Expander Style="{StaticResource CollapsibleCard}">
+                <Expander Style="{StaticResource CollapsibleCard}" Visibility="{Binding Report.IncludeOvary, Converter={StaticResource BoolToVis}}">
                     <Expander.Header>
                         <StackPanel Orientation="Horizontal">
                             <Border Width="4" Height="24" Background="White" CornerRadius="2" VerticalAlignment="Center" Margin="0,0,12,0"/>

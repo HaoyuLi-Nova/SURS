@@ -270,6 +270,28 @@ namespace SURS.App.Models
             set => SetProperty(ref _lastMenstrualPeriod, value);
         }
 
+        // Template Selection - 模板选择（是否填写各部分内容）
+        private bool _includeUterus = true;
+        public bool IncludeUterus
+        {
+            get => _includeUterus;
+            set => SetProperty(ref _includeUterus, value);
+        }
+
+        private bool _includeEndometrium = true;
+        public bool IncludeEndometrium
+        {
+            get => _includeEndometrium;
+            set => SetProperty(ref _includeEndometrium, value);
+        }
+
+        private bool _includeOvary = true;
+        public bool IncludeOvary
+        {
+            get => _includeOvary;
+            set => SetProperty(ref _includeOvary, value);
+        }
+
         // Uterus (Form 1)
         public Uterus Uterus { get; } = new Uterus();
         public Endometrium Endometrium { get; } = new Endometrium();
@@ -530,6 +552,13 @@ namespace SURS.App.Models
             get => _cervixAP;
             set => SetProperty(ref _cervixAP, value);
         }
+
+        private bool _shouldMeasureCervix = true;
+        public bool ShouldMeasureCervix
+        {
+            get => _shouldMeasureCervix;
+            set => SetProperty(ref _shouldMeasureCervix, value);
+        }
         
         private string _myometriumEcho = string.Empty;
         public string MyometriumEcho 
@@ -567,20 +596,45 @@ namespace SURS.App.Models
             set => SetProperty(ref _noduleCount, value);
         }
 
-        private string _noduleLocation = string.Empty;
-        public string NoduleLocation 
+        // 移除NoduleType，不再使用
+
+        // 较大结节（用于多发时只测量较大）
+        private double _largestNoduleLength;
+        public double LargestNoduleLength 
         { 
-            get => _noduleLocation;
-            set => SetProperty(ref _noduleLocation, value);
+            get => _largestNoduleLength;
+            set => SetProperty(ref _largestNoduleLength, value);
         }
 
-        private string _noduleType = string.Empty;
-        public string NoduleType 
+        private double _largestNoduleWidth;
+        public double LargestNoduleWidth 
         { 
-            get => _noduleType;
-            set => SetProperty(ref _noduleType, value);
+            get => _largestNoduleWidth;
+            set => SetProperty(ref _largestNoduleWidth, value);
         }
 
+        private double _largestNoduleHeight;
+        public double LargestNoduleHeight 
+        { 
+            get => _largestNoduleHeight;
+            set => SetProperty(ref _largestNoduleHeight, value);
+        }
+
+        private string _largestNoduleLocation = string.Empty;
+        public string LargestNoduleLocation 
+        { 
+            get => _largestNoduleLocation;
+            set => SetProperty(ref _largestNoduleLocation, value);
+        }
+
+        private string _largestNoduleEcho = string.Empty;
+        public string LargestNoduleEcho 
+        { 
+            get => _largestNoduleEcho;
+            set => SetProperty(ref _largestNoduleEcho, value);
+        }
+
+        // 单发或第一个结节
         private double _noduleLength;
         public double NoduleLength 
         { 
@@ -602,6 +656,13 @@ namespace SURS.App.Models
             set => SetProperty(ref _noduleHeight, value);
         }
 
+        private string _noduleLocation = string.Empty;
+        public string NoduleLocation 
+        { 
+            get => _noduleLocation;
+            set => SetProperty(ref _noduleLocation, value);
+        }
+
         private string _noduleEcho = string.Empty;
         public string NoduleEcho 
         { 
@@ -609,11 +670,68 @@ namespace SURS.App.Models
             set => SetProperty(ref _noduleEcho, value);
         }
 
+        // 第二个结节（用于多发时全部写出）
+        private double _secondNoduleLength;
+        public double SecondNoduleLength 
+        { 
+            get => _secondNoduleLength;
+            set => SetProperty(ref _secondNoduleLength, value);
+        }
+
+        private double _secondNoduleWidth;
+        public double SecondNoduleWidth 
+        { 
+            get => _secondNoduleWidth;
+            set => SetProperty(ref _secondNoduleWidth, value);
+        }
+
+        private double _secondNoduleHeight;
+        public double SecondNoduleHeight 
+        { 
+            get => _secondNoduleHeight;
+            set => SetProperty(ref _secondNoduleHeight, value);
+        }
+
+        private string _secondNoduleLocation = string.Empty;
+        public string SecondNoduleLocation 
+        { 
+            get => _secondNoduleLocation;
+            set => SetProperty(ref _secondNoduleLocation, value);
+        }
+
+        private string _secondNoduleEcho = string.Empty;
+        public string SecondNoduleEcho 
+        { 
+            get => _secondNoduleEcho;
+            set => SetProperty(ref _secondNoduleEcho, value);
+        }
+
         private string _noduleBoundary = string.Empty;
         public string NoduleBoundary 
         { 
             get => _noduleBoundary;
             set => SetProperty(ref _noduleBoundary, value);
+        }
+
+        private bool _noduleProtrudes;
+        public bool NoduleProtrudes 
+        { 
+            get => _noduleProtrudes;
+            set => SetProperty(ref _noduleProtrudes, value);
+        }
+
+        private bool _noduleCompressesCavity;
+        public bool NoduleCompressesCavity 
+        { 
+            get => _noduleCompressesCavity;
+            set => SetProperty(ref _noduleCompressesCavity, value);
+        }
+
+        private bool _measureOnlyLargest;
+        public bool MeasureOnlyLargest 
+        { 
+            get => _measureOnlyLargest;
+            set => SetProperty(ref _measureOnlyLargest, value);
         }
 
         private string _noduleSizeLocation = string.Empty; // Legacy, kept for compatibility if needed, but we will likely remove usage
@@ -644,6 +762,20 @@ namespace SURS.App.Models
                     Thickness = 0;
                 }
             }
+        }
+
+        private bool _isSingleLayer;
+        public bool IsSingleLayer 
+        { 
+            get => _isSingleLayer;
+            set => SetProperty(ref _isSingleLayer, value);
+        }
+
+        private bool _shouldMeasureFlow;
+        public bool ShouldMeasureFlow 
+        { 
+            get => _shouldMeasureFlow;
+            set => SetProperty(ref _shouldMeasureFlow, value);
         }
 
         private string _echoType = string.Empty;
