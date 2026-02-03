@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.ObjectModel;
+using System.Linq;
 
 namespace SURS.App.Models
 {
@@ -8,6 +9,7 @@ namespace SURS.App.Models
         public SursReport()
         {
             InitializeDateSelections();
+            InitializeAdnexaRegions();
         }
 
         // Image Paths
@@ -332,6 +334,16 @@ namespace SURS.App.Models
         public Ovary LeftOvary { get; } = new Ovary("Left");
         public Ovary RightOvary { get; } = new Ovary("Right");
 
+        // 卵巢/附件（分四个部位分别描述：左卵巢、右卵巢、左附件、右附件）
+        public ObservableCollection<AdnexaRegion> AdnexaRegions { get; } = new ObservableCollection<AdnexaRegion>();
+
+        private AdnexaRegion? _selectedAdnexaRegion;
+        public AdnexaRegion? SelectedAdnexaRegion
+        {
+            get => _selectedAdnexaRegion;
+            set => SetProperty(ref _selectedAdnexaRegion, value);
+        }
+
         // Findings Categories (Checkboxes in the form) - 异常卵巢选项（多选）
         private bool _hasUnilocularCyst;
         public bool HasUnilocularCyst
@@ -427,6 +439,17 @@ namespace SURS.App.Models
             get => _uterusDescription;
             set => SetProperty(ref _uterusDescription, value);
         }
+
+        private void InitializeAdnexaRegions()
+        {
+            // 默认创建 4 个一级菜单，允许分别填写“正常/异常”
+            AdnexaRegions.Clear();
+            AdnexaRegions.Add(new AdnexaRegion("左卵巢"));
+            AdnexaRegions.Add(new AdnexaRegion("右卵巢"));
+            AdnexaRegions.Add(new AdnexaRegion("左附件"));
+            AdnexaRegions.Add(new AdnexaRegion("右附件"));
+            SelectedAdnexaRegion = AdnexaRegions.FirstOrDefault();
+        }
         
         // Endometrium Diagnosis (Multi-select)
         private bool _isEndoHyperplasia;
@@ -511,6 +534,11 @@ namespace SURS.App.Models
 
     public class Uterus : ObservableObject
     {
+        public Uterus()
+        {
+            // 结节由用户手动添加：默认不创建结节页签
+        }
+
         private string _position = string.Empty;
         public string Position 
         { 
@@ -586,6 +614,64 @@ namespace SURS.App.Models
         { 
             get => _myometriumThickeningNodule;
             set => SetProperty(ref _myometriumThickeningNodule, value);
+        }
+
+        // 结节（动态添加）
+        public ObservableCollection<MyometriumNodule> Nodules { get; } = new ObservableCollection<MyometriumNodule>();
+
+        private MyometriumNodule? _selectedNodule;
+        public MyometriumNodule? SelectedNodule
+        {
+            get => _selectedNodule;
+            set => SetProperty(ref _selectedNodule, value);
+        }
+
+        /// <summary>
+        /// 是否有多发结节（≥2），用于显示“报告方式”选项。
+        /// </summary>
+        public bool HasMultipleNodules => Nodules.Count >= 2;
+
+        public void AddNodule()
+        {
+            var n = new MyometriumNodule();
+            Nodules.Add(n);
+            SelectedNodule = n;
+            OnPropertyChanged(nameof(HasMultipleNodules));
+        }
+
+        /// <summary>
+        /// 删除指定结节（用于每个结节卡片内的“删除此结节”按钮）。
+        /// </summary>
+        public void RemoveNodule(MyometriumNodule? nodule)
+        {
+            if (nodule == null || !Nodules.Contains(nodule)) return;
+
+            var idx = Nodules.IndexOf(nodule);
+            Nodules.Remove(nodule);
+
+            if (Nodules.Count == 0)
+            {
+                SelectedNodule = null;
+                return;
+            }
+
+            SelectedNodule = Nodules[Math.Max(0, Math.Min(idx, Nodules.Count - 1))];
+            OnPropertyChanged(nameof(HasMultipleNodules));
+        }
+
+        public void RemoveSelectedNodule()
+        {
+            RemoveNodule(SelectedNodule ?? Nodules.LastOrDefault());
+        }
+
+        /// <summary>
+        /// 多发时报告方式：true=只描述较大者（按体积自动取最大），false=全部写出。
+        /// </summary>
+        private bool _reportOnlyLargestNodule = true;
+        public bool ReportOnlyLargestNodule
+        {
+            get => _reportOnlyLargestNodule;
+            set => SetProperty(ref _reportOnlyLargestNodule, value);
         }
 
         // Nodule Details
@@ -740,6 +826,72 @@ namespace SURS.App.Models
             get => _noduleSizeLocation;
             set => SetProperty(ref _noduleSizeLocation, value);
         }
+    }
+
+    public class MyometriumNodule : ObservableObject
+    {
+        private string _location = string.Empty;
+        public string Location
+        {
+            get => _location;
+            set => SetProperty(ref _location, value);
+        }
+
+        private double _length;
+        public double Length
+        {
+            get => _length;
+            set => SetProperty(ref _length, value);
+        }
+
+        private double _width;
+        public double Width
+        {
+            get => _width;
+            set => SetProperty(ref _width, value);
+        }
+
+        private double _height;
+        public double Height
+        {
+            get => _height;
+            set => SetProperty(ref _height, value);
+        }
+
+        private string _echo = string.Empty;
+        public string Echo
+        {
+            get => _echo;
+            set => SetProperty(ref _echo, value);
+        }
+
+        private string _boundary = string.Empty;
+        public string Boundary
+        {
+            get => _boundary;
+            set => SetProperty(ref _boundary, value);
+        }
+
+        private bool _protrudes;
+        public bool Protrudes
+        {
+            get => _protrudes;
+            set => SetProperty(ref _protrudes, value);
+        }
+
+        private bool _compressesCavity;
+        public bool CompressesCavity
+        {
+            get => _compressesCavity;
+            set => SetProperty(ref _compressesCavity, value);
+        }
+
+        public bool IsEmpty =>
+            string.IsNullOrWhiteSpace(Location) &&
+            string.IsNullOrWhiteSpace(Echo) &&
+            string.IsNullOrWhiteSpace(Boundary) &&
+            Length == 0 && Width == 0 && Height == 0 &&
+            !Protrudes && !CompressesCavity;
     }
 
     public class Endometrium : ObservableObject
@@ -1081,6 +1233,155 @@ namespace SURS.App.Models
         {
             get => _maxCystDiameter;
             set => SetProperty(ref _maxCystDiameter, value);
+        }
+    }
+
+    /// <summary>
+    /// 卵巢/附件按部位分别描述的模型（一级：左卵巢/右卵巢/左附件/右附件；二级：正常/异常）。
+    /// </summary>
+    public class AdnexaRegion : ObservableObject
+    {
+        public AdnexaRegion(string name)
+        {
+            Name = name;
+            // 默认选“正常”，避免一打开就是空状态
+            Evaluation = "正常";
+        }
+
+        public string Name { get; }
+
+        private string _evaluation = "正常";
+        public string Evaluation
+        {
+            get => _evaluation;
+            set => SetProperty(ref _evaluation, value);
+        }
+
+        public bool IsNormal
+        {
+            get => Evaluation == "正常";
+            set
+            {
+                if (!value) return;
+                Evaluation = "正常";
+                OnPropertyChanged(nameof(IsNormal));
+                OnPropertyChanged(nameof(IsAbnormal));
+            }
+        }
+
+        public bool IsAbnormal
+        {
+            get => Evaluation == "异常";
+            set
+            {
+                if (!value) return;
+                Evaluation = "异常";
+                OnPropertyChanged(nameof(IsNormal));
+                OnPropertyChanged(nameof(IsAbnormal));
+            }
+        }
+
+        // 正常时：大小 + 囊性回声（卵泡）数量/较大直径（也可用于附件区的简单描述）
+        private double _length;
+        public double Length
+        {
+            get => _length;
+            set => SetProperty(ref _length, value);
+        }
+
+        private double _width;
+        public double Width
+        {
+            get => _width;
+            set => SetProperty(ref _width, value);
+        }
+
+        private double _height;
+        public double Height
+        {
+            get => _height;
+            set => SetProperty(ref _height, value);
+        }
+
+        private int _cystCount;
+        public int CystCount
+        {
+            get => _cystCount;
+            set => SetProperty(ref _cystCount, value);
+        }
+
+        private double _maxCystDiameter;
+        public double MaxCystDiameter
+        {
+            get => _maxCystDiameter;
+            set => SetProperty(ref _maxCystDiameter, value);
+        }
+
+        // 异常类目（多选）
+        private bool _hasUnilocularCyst;
+        public bool HasUnilocularCyst
+        {
+            get => _hasUnilocularCyst;
+            set => SetProperty(ref _hasUnilocularCyst, value);
+        }
+        public UnilocularCyst UnilocularCyst { get; } = new UnilocularCyst();
+
+        private bool _hasMultilocularCyst;
+        public bool HasMultilocularCyst
+        {
+            get => _hasMultilocularCyst;
+            set => SetProperty(ref _hasMultilocularCyst, value);
+        }
+        public MultilocularCyst MultilocularCyst { get; } = new MultilocularCyst();
+
+        private bool _hasSolidCyst;
+        public bool HasSolidCyst
+        {
+            get => _hasSolidCyst;
+            set => SetProperty(ref _hasSolidCyst, value);
+        }
+        public SolidCyst SolidCyst { get; } = new SolidCyst();
+
+        private bool _hasSolidMass;
+        public bool HasSolidMass
+        {
+            get => _hasSolidMass;
+            set => SetProperty(ref _hasSolidMass, value);
+        }
+        public SolidMass SolidMass { get; } = new SolidMass();
+
+        /// <summary>
+        /// 是否有任何异常类型被选中（用于状态指示器）
+        /// </summary>
+        public bool HasAnyAbnormality => HasUnilocularCyst || HasMultilocularCyst || HasSolidCyst || HasSolidMass;
+
+        // 展开状态管理（用于UI中Expander的展开状态）
+        private bool _isUnilocularExpanded;
+        public bool IsUnilocularExpanded
+        {
+            get => _isUnilocularExpanded;
+            set => SetProperty(ref _isUnilocularExpanded, value);
+        }
+
+        private bool _isMultilocularExpanded;
+        public bool IsMultilocularExpanded
+        {
+            get => _isMultilocularExpanded;
+            set => SetProperty(ref _isMultilocularExpanded, value);
+        }
+
+        private bool _isSolidCystExpanded;
+        public bool IsSolidCystExpanded
+        {
+            get => _isSolidCystExpanded;
+            set => SetProperty(ref _isSolidCystExpanded, value);
+        }
+
+        private bool _isSolidMassExpanded;
+        public bool IsSolidMassExpanded
+        {
+            get => _isSolidMassExpanded;
+            set => SetProperty(ref _isSolidMassExpanded, value);
         }
     }
 

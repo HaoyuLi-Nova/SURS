@@ -13,6 +13,19 @@ namespace SURS.App.Helpers
         public static readonly DependencyProperty NumericOnlyProperty =
             DependencyProperty.RegisterAttached("NumericOnly", typeof(bool), typeof(TextBoxHelpers), new PropertyMetadata(false, OnNumericOnlyChanged));
 
+        public static readonly DependencyProperty PlaceholderTextProperty =
+            DependencyProperty.RegisterAttached("PlaceholderText", typeof(string), typeof(TextBoxHelpers), new PropertyMetadata(string.Empty));
+
+        public static string GetPlaceholderText(DependencyObject obj)
+        {
+            return (string)obj.GetValue(PlaceholderTextProperty);
+        }
+
+        public static void SetPlaceholderText(DependencyObject obj, string value)
+        {
+            obj.SetValue(PlaceholderTextProperty, value);
+        }
+
         public static bool GetIsNumeric(DependencyObject obj)
         {
             return (bool)obj.GetValue(IsNumericProperty);

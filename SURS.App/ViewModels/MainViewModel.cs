@@ -17,7 +17,7 @@ namespace SURS.App.ViewModels
     {
         private readonly PdfService _pdfService;
         private System.Threading.CancellationTokenSource? _previewUpdateCancellation;
-        private const int PreviewUpdateDelayMs = 200; // 增加防抖延迟到200ms，平衡性能与响应
+        private const int PreviewUpdateDelayMs = 0; // 无等待，变更后立即开始生成预览
 
         private SursReport _report = null!;
         public SursReport Report
@@ -94,6 +94,8 @@ namespace SURS.App.ViewModels
         public RelayCommand ZoomInPreviewCommand { get; }
         public RelayCommand ZoomOutPreviewCommand { get; }
         public RelayCommand ResetZoomPreviewCommand { get; }
+        public RelayCommand AddUterusNoduleCommand { get; }
+        public RelayCommand<MyometriumNodule?> RemoveUterusNoduleCommand { get; }
 
         /// <summary>
         /// 处理鼠标滚轮缩放
@@ -121,8 +123,6 @@ namespace SURS.App.ViewModels
         public MainViewModel()
         {
             _pdfService = new PdfService();
-            ResetForm();
-
             ExportPdfCommand = new RelayCommand(ExportPdf);
             SelectImageCommand = new RelayCommand(SelectImage);
             ResetCommand = new RelayCommand(ResetForm);
@@ -130,6 +130,26 @@ namespace SURS.App.ViewModels
             ZoomInPreviewCommand = new RelayCommand(() => PreviewZoom += BaseZoom * 0.5); // 每次增加50%（相对于基准）
             ZoomOutPreviewCommand = new RelayCommand(() => PreviewZoom -= BaseZoom * 0.5); // 每次减少50%（相对于基准）
             ResetZoomPreviewCommand = new RelayCommand(() => PreviewZoom = BaseZoom); // 重置到基准值（100%）
+
+            RemoveUterusNoduleCommand = new RelayCommand<MyometriumNodule?>(
+                nodule =>
+                {
+                    if (Report?.Uterus == null || nodule == null) return;
+                    Report.Uterus.RemoveNodule(nodule);
+                    RemoveUterusNoduleCommand?.NotifyCanExecuteChanged();
+                    TriggerPreviewUpdate();
+                },
+                nodule => nodule != null && Report?.Uterus?.Nodules?.Contains(nodule) == true);
+
+            AddUterusNoduleCommand = new RelayCommand(() =>
+            {
+                if (Report?.Uterus == null) return;
+                Report.Uterus.AddNodule();
+                RemoveUterusNoduleCommand?.NotifyCanExecuteChanged();
+                TriggerPreviewUpdate();
+            });
+
+            ResetForm();
         }
 
         private void Report_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -145,16 +165,14 @@ namespace SURS.App.ViewModels
             _previewUpdateCancellation = new System.Threading.CancellationTokenSource();
             var token = _previewUpdateCancellation.Token;
 
-            // 启动异步任务进行防抖和更新
+            // 启动异步任务（0ms 时 Delay 立即返回，实现即时刷新）
             System.Threading.Tasks.Task.Run(async () =>
             {
                 try
                 {
-                    await System.Threading.Tasks.Task.Delay(PreviewUpdateDelayMs, token);
+                    await System.Threading.Tasks.Task.Delay(PreviewUpdateDelayMs, token).ConfigureAwait(false);
                     if (!token.IsCancellationRequested)
-                    {
                         await UpdatePreviewAsync(token);
-                    }
                 }
                 catch (System.Threading.Tasks.TaskCanceledException)
                 {
@@ -220,30 +238,59 @@ namespace SURS.App.ViewModels
             // 订阅所有嵌套对象的属性变化
             if (report.Uterus != null)
                 report.Uterus.PropertyChanged += (s, e) => TriggerPreviewUpdate();
+
+            if (report.Uterus != null)
+            {
+                // 监听子宫结节集合变化
+                report.Uterus.Nodules.CollectionChanged += (s, e) =>
+                {
+                    TriggerPreviewUpdate();
+                    RemoveUterusNoduleCommand?.NotifyCanExecuteChanged();
+
+                    if (e.NewItems != null)
+                    {
+                        foreach (MyometriumNodule n in e.NewItems)
+                        {
+                            n.PropertyChanged += (s2, e2) => TriggerPreviewUpdate();
+                        }
+                    }
+                };
+
+                // 监听现有结节的属性变化
+                foreach (var n in report.Uterus.Nodules)
+                {
+                    n.PropertyChanged += (s, e) => TriggerPreviewUpdate();
+                }
+            }
             
             if (report.Endometrium != null)
                 report.Endometrium.PropertyChanged += (s, e) => TriggerPreviewUpdate();
             
             if (report.Cavity != null)
                 report.Cavity.PropertyChanged += (s, e) => TriggerPreviewUpdate();
-            
-            if (report.LeftOvary != null)
-                report.LeftOvary.PropertyChanged += (s, e) => TriggerPreviewUpdate();
-            
-            if (report.RightOvary != null)
-                report.RightOvary.PropertyChanged += (s, e) => TriggerPreviewUpdate();
-            
-            if (report.UnilocularCyst != null)
-                report.UnilocularCyst.PropertyChanged += (s, e) => TriggerPreviewUpdate();
-            
-            if (report.MultilocularCyst != null)
-                report.MultilocularCyst.PropertyChanged += (s, e) => TriggerPreviewUpdate();
-            
-            if (report.SolidCyst != null)
-                report.SolidCyst.PropertyChanged += (s, e) => TriggerPreviewUpdate();
-            
-            if (report.SolidMass != null)
-                report.SolidMass.PropertyChanged += (s, e) => TriggerPreviewUpdate();
+
+            // 卵巢/附件：四个部位分别监听（左卵巢/右卵巢/左附件/右附件）
+            void SubscribeRegion(AdnexaRegion region)
+            {
+                region.PropertyChanged += (s, e) => TriggerPreviewUpdate();
+                region.UnilocularCyst.PropertyChanged += (s, e) => TriggerPreviewUpdate();
+                region.MultilocularCyst.PropertyChanged += (s, e) => TriggerPreviewUpdate();
+                region.SolidCyst.PropertyChanged += (s, e) => TriggerPreviewUpdate();
+                region.SolidMass.PropertyChanged += (s, e) => TriggerPreviewUpdate();
+            }
+
+            report.AdnexaRegions.CollectionChanged += (s, e) =>
+            {
+                TriggerPreviewUpdate();
+                if (e.NewItems != null)
+                {
+                    foreach (AdnexaRegion r in e.NewItems)
+                        SubscribeRegion(r);
+                }
+            };
+
+            foreach (var r in report.AdnexaRegions)
+                SubscribeRegion(r);
             
             // 监听集合变化
             report.ImagePaths.CollectionChanged += (s, e) => TriggerPreviewUpdate();
