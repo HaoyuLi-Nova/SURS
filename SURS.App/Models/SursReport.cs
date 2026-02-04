@@ -442,13 +442,34 @@ namespace SURS.App.Models
 
         private void InitializeAdnexaRegions()
         {
-            // 默认创建 4 个一级菜单，允许分别填写“正常/异常”
+            // 默认创建 4 个一级菜单，允许分别填写"正常/异常"
             AdnexaRegions.Clear();
             AdnexaRegions.Add(new AdnexaRegion("左卵巢"));
             AdnexaRegions.Add(new AdnexaRegion("右卵巢"));
             AdnexaRegions.Add(new AdnexaRegion("左附件"));
             AdnexaRegions.Add(new AdnexaRegion("右附件"));
             SelectedAdnexaRegion = AdnexaRegions.FirstOrDefault();
+        }
+
+        // O-RADS自动计算器
+        private static readonly Services.ORadsCalculator _oradsCalculator = new Services.ORadsCalculator();
+
+        /// <summary>
+        /// 计算并更新自动O-RADS分级
+        /// </summary>
+        public void CalculateAutoORads()
+        {
+            var result = _oradsCalculator.CalculateORadsLevel(this);
+            AutoORadsResult = result;
+            
+            // 如果使用自动分级，更新ORadsLevel
+            if (UseAutoORads && result != null)
+            {
+                ORadsLevel = result.LevelString;
+            }
+            
+            OnPropertyChanged(nameof(EffectiveORadsLevel));
+            OnPropertyChanged(nameof(AutoORadsResult));
         }
         
         // Endometrium Diagnosis (Multi-select)
@@ -499,7 +520,61 @@ namespace SURS.App.Models
         public string ORadsLevel
         {
             get => _oRadsLevel;
-            set => SetProperty(ref _oRadsLevel, value);
+            set
+            {
+                // 如果手动设置了O-RADS分级，且与自动分级不同，则禁用自动分级
+                if (SetProperty(ref _oRadsLevel, value))
+                {
+                    if (UseAutoORads && AutoORadsResult != null)
+                    {
+                        if (value != AutoORadsResult.LevelString)
+                        {
+                            // 手动选择与自动分级不同，禁用自动分级
+                            UseAutoORads = false;
+                        }
+                    }
+                    else if (!string.IsNullOrEmpty(value))
+                    {
+                        // 手动设置了分级，禁用自动分级
+                        UseAutoORads = false;
+                    }
+                }
+            }
+        }
+
+        // 自动计算的O-RADS分级结果
+        private ORadsResult? _autoORadsResult;
+        public ORadsResult? AutoORadsResult
+        {
+            get => _autoORadsResult;
+            set => SetProperty(ref _autoORadsResult, value);
+        }
+
+        // 是否使用自动分级（如果为false，则使用手动选择的ORadsLevel）
+        private bool _useAutoORads = true;
+        public bool UseAutoORads
+        {
+            get => _useAutoORads;
+            set
+            {
+                if (SetProperty(ref _useAutoORads, value))
+                {
+                    OnPropertyChanged(nameof(EffectiveORadsLevel));
+                }
+            }
+        }
+
+        // 有效的O-RADS分级（自动或手动）
+        public string EffectiveORadsLevel
+        {
+            get
+            {
+                if (UseAutoORads && AutoORadsResult != null)
+                {
+                    return AutoORadsResult.LevelString;
+                }
+                return ORadsLevel;
+            }
         }
 
         // Footer - 报告签署

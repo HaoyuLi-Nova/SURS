@@ -272,11 +272,32 @@ namespace SURS.App.ViewModels
             // 卵巢/附件：四个部位分别监听（左卵巢/右卵巢/左附件/右附件）
             void SubscribeRegion(AdnexaRegion region)
             {
-                region.PropertyChanged += (s, e) => TriggerPreviewUpdate();
-                region.UnilocularCyst.PropertyChanged += (s, e) => TriggerPreviewUpdate();
-                region.MultilocularCyst.PropertyChanged += (s, e) => TriggerPreviewUpdate();
-                region.SolidCyst.PropertyChanged += (s, e) => TriggerPreviewUpdate();
-                region.SolidMass.PropertyChanged += (s, e) => TriggerPreviewUpdate();
+                region.PropertyChanged += (s, e) =>
+                {
+                    TriggerPreviewUpdate();
+                    // 当区域属性变化时，重新计算O-RADS分级
+                    TriggerAutoORadsCalculation(report);
+                };
+                region.UnilocularCyst.PropertyChanged += (s, e) =>
+                {
+                    TriggerPreviewUpdate();
+                    TriggerAutoORadsCalculation(report);
+                };
+                region.MultilocularCyst.PropertyChanged += (s, e) =>
+                {
+                    TriggerPreviewUpdate();
+                    TriggerAutoORadsCalculation(report);
+                };
+                region.SolidCyst.PropertyChanged += (s, e) =>
+                {
+                    TriggerPreviewUpdate();
+                    TriggerAutoORadsCalculation(report);
+                };
+                region.SolidMass.PropertyChanged += (s, e) =>
+                {
+                    TriggerPreviewUpdate();
+                    TriggerAutoORadsCalculation(report);
+                };
             }
 
             report.AdnexaRegions.CollectionChanged += (s, e) =>
@@ -287,6 +308,8 @@ namespace SURS.App.ViewModels
                     foreach (AdnexaRegion r in e.NewItems)
                         SubscribeRegion(r);
                 }
+                // 当集合变化时，重新计算O-RADS分级
+                TriggerAutoORadsCalculation(report);
             };
 
             foreach (var r in report.AdnexaRegions)
@@ -310,7 +333,51 @@ namespace SURS.App.ViewModels
             // 监听现有FluidLocation对象的属性变化
             foreach (var fluid in report.FluidLocations)
             {
-                fluid.PropertyChanged += (s, e) => TriggerPreviewUpdate();
+                fluid.PropertyChanged += (s, e) =>
+                {
+                    TriggerPreviewUpdate();
+                    // 积液状态变化时，重新计算O-RADS分级
+                    TriggerAutoORadsCalculation(report);
+                };
+            }
+
+            // 监听HasFluid和UseAutoORads属性变化
+            report.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(report.HasFluid) || e.PropertyName == nameof(report.HasNoFluid))
+                {
+                    TriggerAutoORadsCalculation(report);
+                }
+                else if (e.PropertyName == nameof(report.UseAutoORads))
+                {
+                    if (report.UseAutoORads)
+                    {
+                        report.CalculateAutoORads();
+                        // 如果启用自动分级，更新手动选择的ORadsLevel
+                        if (report.AutoORadsResult != null)
+                        {
+                            report.ORadsLevel = report.AutoORadsResult.LevelString;
+                        }
+                    }
+                }
+            };
+
+            // 初始化时计算一次O-RADS分级
+            TriggerAutoORadsCalculation(report);
+        }
+
+        /// <summary>
+        /// 触发自动O-RADS分级计算
+        /// </summary>
+        private void TriggerAutoORadsCalculation(SursReport report)
+        {
+            if (report != null && report.UseAutoORads)
+            {
+                report.CalculateAutoORads();
+                if (report.AutoORadsResult != null)
+                {
+                    report.ORadsLevel = report.AutoORadsResult.LevelString;
+                }
             }
         }
 

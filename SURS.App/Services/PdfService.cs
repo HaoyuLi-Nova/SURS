@@ -454,7 +454,7 @@ namespace SURS.App.Services
                                                 if (region.SolidCyst.SolidEchoHigh) solidEchoes.Add("高回声");
                                                 if (region.SolidCyst.SolidEchoOther && !string.IsNullOrWhiteSpace(region.SolidCyst.SolidEchoOtherText)) solidEchoes.Add(region.SolidCyst.SolidEchoOtherText);
 
-                                                solid.Append($"，实性成分最大者：大小约{region.SolidCyst.SolidLength}*{region.SolidCyst.SolidWidth}*{region.SolidCyst.SolidHeight}cm");
+                                                solid.Append($"，实性成分最大者的大小约{region.SolidCyst.SolidLength}*{region.SolidCyst.SolidWidth}*{region.SolidCyst.SolidHeight}cm");
                                                 if (solidEchoes.Any()) solid.Append($"，呈{string.Join("/", solidEchoes)}");
                                                 if (!string.IsNullOrWhiteSpace(region.SolidCyst.SolidBoundary)) solid.Append($"，边界{region.SolidCyst.SolidBoundary}");
                                                 if (!string.IsNullOrWhiteSpace(region.SolidCyst.SolidShadow)) solid.Append($"，{region.SolidCyst.SolidShadow}声影");

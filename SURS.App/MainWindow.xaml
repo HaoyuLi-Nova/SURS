@@ -22,6 +22,11 @@
         <converters:ImageIndexConverter x:Key="ImageIndexConverter"/>
         <converters:DoubleToStringConverter x:Key="DoubleToStringConverter"/>
         <converters:NoduleTabHeaderConverter x:Key="NoduleTabHeaderConverter"/>
+        <converters:NullToVisibilityConverter x:Key="NullToVis"/>
+        <converters:StringToVisibilityConverter x:Key="StringToVis"/>
+        <converters:ORadsLevelToColorConverter x:Key="ORadsLevelToColor"/>
+        <converters:ORadsLevelToBackgroundColorConverter x:Key="ORadsLevelToBgColor"/>
+        <converters:ORadsLevelToBorderColorConverter x:Key="ORadsLevelToBorderColor"/>
 
         <!-- COLOR PALETTE: Modern Medical Theme -->
         <Color x:Key="Color.Primary">#4A90E2</Color>       <!-- Modern Blue -->
@@ -138,49 +143,6 @@
             </Setter>
         </Style>
 
-        <Style x:Key="CollapsibleCard" TargetType="Expander">
-            <Setter Property="Background" Value="{StaticResource Brush.Surface}"/>
-            <Setter Property="Padding" Value="32"/>
-            <Setter Property="Margin" Value="0,0,0,28"/>
-            <Setter Property="IsExpanded" Value="True"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Expander">
-                        <Border Background="{TemplateBinding Background}" CornerRadius="12" BorderBrush="{StaticResource Brush.BorderLight}" BorderThickness="1">
-                            <Border.Effect>
-                                <DropShadowEffect Color="#000000" Direction="270" ShadowDepth="0" BlurRadius="20" Opacity="0.08"/>
-                            </Border.Effect>
-                            <StackPanel>
-                                <ToggleButton x:Name="HeaderSite"
-                                              IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}}"
-                                              BorderThickness="0"
-                                              Background="{StaticResource Brush.Primary}"
-                                              Padding="16,12"
-                                              Cursor="Hand">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <ContentPresenter Grid.Column="0" ContentSource="Header" VerticalAlignment="Center"/>
-                                        <TextBlock x:Name="Chevron" Grid.Column="1" Text="▼" Foreground="White" FontSize="12" VerticalAlignment="Center" Margin="12,0,0,0"/>
-                                    </Grid>
-                                </ToggleButton>
-
-                                <ContentPresenter x:Name="ExpandSite" ContentSource="Content" Margin="{TemplateBinding Padding}"/>
-                            </StackPanel>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsExpanded" Value="False">
-                                <Setter TargetName="ExpandSite" Property="Visibility" Value="Collapsed"/>
-                                <Setter TargetName="Chevron" Property="Text" Value="▶"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-        
         <!-- Section Header -->
         <Style x:Key="SectionHeader" TargetType="Border">
             <Setter Property="Background" Value="{StaticResource Brush.Primary}"/>
@@ -451,6 +413,160 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+        </Style>
+
+        <!-- TabControl: Modern Style -->
+        <Style TargetType="TabControl">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabControl">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Border Grid.Row="0" Background="Transparent" BorderBrush="{StaticResource Brush.BorderLight}" BorderThickness="0,0,0,2" Margin="0,0,0,16">
+                                <TabPanel x:Name="HeaderPanel" IsItemsHost="True" Margin="0,0,0,0"/>
+                            </Border>
+                            <Border Grid.Row="1" Background="Transparent" Padding="0">
+                                <ContentPresenter x:Name="PART_SelectedContentHost" ContentSource="SelectedContent" Margin="0"/>
+                            </Border>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- TabItem: Modern Chip Style -->
+        <Style TargetType="TabItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="Padding" Value="20,12"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="border" 
+                                Background="#F0F4F8" 
+                                BorderBrush="Transparent" 
+                                BorderThickness="0" 
+                                CornerRadius="10,10,0,0"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter x:Name="ContentSite" 
+                                            VerticalAlignment="Center" 
+                                            HorizontalAlignment="Center" 
+                                            ContentSource="Header"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{StaticResource Brush.Primary}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource Brush.Primary}"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#E0E8F0"/>
+                                <Setter Property="Foreground" Value="{StaticResource Brush.Primary}"/>
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsSelected" Value="True"/>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="border" Property="Background" Value="{StaticResource Brush.PrimaryDark}"/>
+                            </MultiTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Enhanced Expander Style -->
+        <Style x:Key="CollapsibleCard" TargetType="Expander">
+            <Setter Property="Background" Value="{StaticResource Brush.Surface}"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0,0,0,20"/>
+            <Setter Property="IsExpanded" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Expander">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="12" 
+                                BorderBrush="{StaticResource Brush.BorderLight}" 
+                                BorderThickness="1"
+                                Margin="0,0,0,0">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#000000" Direction="270" ShadowDepth="2" BlurRadius="16" Opacity="0.06"/>
+                            </Border.Effect>
+                            <StackPanel>
+                                <ToggleButton x:Name="HeaderSite"
+                                              IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}}"
+                                              BorderThickness="0"
+                                              Background="{StaticResource Brush.PrimaryGradient}"
+                                              Padding="20,16"
+                                              Cursor="Hand">
+                                    <ToggleButton.Effect>
+                                        <DropShadowEffect Color="#000000" Direction="270" ShadowDepth="1" BlurRadius="8" Opacity="0.1"/>
+                                    </ToggleButton.Effect>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <ContentPresenter Grid.Column="0" ContentSource="Header" VerticalAlignment="Center"/>
+                                        <Border Grid.Column="1" 
+                                                Width="24" 
+                                                Height="24" 
+                                                Background="#20FFFFFF" 
+                                                CornerRadius="12" 
+                                                VerticalAlignment="Center" 
+                                                Margin="12,0,0,0">
+                                            <TextBlock x:Name="Chevron" 
+                                                       Text="▼" 
+                                                       Foreground="White" 
+                                                       FontSize="10" 
+                                                       HorizontalAlignment="Center" 
+                                                       VerticalAlignment="Center"
+                                                       FontWeight="Bold"/>
+                                        </Border>
+                                    </Grid>
+                                </ToggleButton>
+
+                                <ContentPresenter x:Name="ExpandSite" 
+                                                  ContentSource="Content" 
+                                                  Margin="24,20"/>
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsExpanded" Value="False">
+                                <Setter TargetName="ExpandSite" Property="Visibility" Value="Collapsed"/>
+                                <Setter TargetName="Chevron" Property="Text" Value="▶"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Enhanced RadioButton Style for Evaluation -->
+        <Style x:Key="RadioButton.Evaluation" TargetType="RadioButton" BasedOn="{StaticResource {x:Type RadioButton}}">
+            <Setter Property="Margin" Value="0,0,16,0"/>
+            <Setter Property="Padding" Value="20,12"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="MinWidth" Value="140"/>
+        </Style>
+
+        <!-- Enhanced TextBox Style -->
+        <Style x:Key="TextBox.Compact" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Padding" Value="10,0"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Background" Value="#FAFBFC"/>
         </Style>
 
     </Window.Resources>
@@ -1346,61 +1462,190 @@
                         <!-- 一级：左卵巢/右卵巢/左附件/右附件；二级：正常/异常 -->
                         <TabControl ItemsSource="{Binding Report.AdnexaRegions}"
                                     SelectedItem="{Binding Report.SelectedAdnexaRegion}"
-                                    Margin="0,0,0,20">
+                                    Margin="0,0,0,24">
                             <TabControl.ItemTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding Name}" Padding="8,4"/>
+                                    <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold"/>
                                 </DataTemplate>
                             </TabControl.ItemTemplate>
                             <TabControl.ContentTemplate>
                                 <DataTemplate>
                                     <!-- DataContext = AdnexaRegion -->
-                                    <StackPanel>
-                                        <!-- 评价选择 -->
-                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-                                            <RadioButton GroupName="Evaluation" Content="未见明显异常" IsChecked="{Binding IsNormal}"/>
-                                            <RadioButton GroupName="Evaluation" Content="见异常病灶" IsChecked="{Binding IsAbnormal}" Margin="24,0,0,0"/>
-                                        </StackPanel>
+                                    <Border Background="#FAFBFC" 
+                                            CornerRadius="12" 
+                                            Padding="24" 
+                                            BorderBrush="{StaticResource Brush.BorderLight}" 
+                                            BorderThickness="1">
+                                        <StackPanel>
+                                            <!-- 评价选择 -->
+                                            <Border Background="White" 
+                                                    CornerRadius="10" 
+                                                    Padding="16" 
+                                                    Margin="0,0,0,20"
+                                                    BorderBrush="{StaticResource Brush.BorderLight}" 
+                                                    BorderThickness="1">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="评价：" 
+                                                               Style="{StaticResource Text.Label}" 
+                                                               FontWeight="SemiBold" 
+                                                               FontSize="15"
+                                                               VerticalAlignment="Center" 
+                                                               Margin="0,0,16,0"/>
+                                                    <RadioButton GroupName="Evaluation" 
+                                                                 Content="未见明显异常" 
+                                                                 IsChecked="{Binding IsNormal}"
+                                                                 Style="{StaticResource RadioButton.Evaluation}"/>
+                                                    <RadioButton GroupName="Evaluation" 
+                                                                 Content="见异常病灶" 
+                                                                 IsChecked="{Binding IsAbnormal}"
+                                                                 Style="{StaticResource RadioButton.Evaluation}"/>
+                                                </StackPanel>
+                                            </Border>
 
                                         <!-- 正常 -->
-                                        <StackPanel Visibility="{Binding IsNormal, Converter={StaticResource BoolToVis}}" Margin="0,0,0,12">
-                                            <Grid Margin="0,0,0,12">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Text="大小：" Style="{StaticResource Text.Label}" Grid.Column="0" VerticalAlignment="Center"/>
-                                                <StackPanel Orientation="Horizontal" Grid.Column="1">
-                                                    <TextBox helpers:TextBoxHelpers.IsNumeric="True" helpers:TextBoxHelpers.PlaceholderText="长径" Text="{Binding Length, UpdateSourceTrigger=PropertyChanged, Converter={StaticResource DoubleToStringConverter}}" Width="50"/>
-                                                    <TextBlock Text="×" Margin="4,0" VerticalAlignment="Center"/>
-                                                    <TextBox helpers:TextBoxHelpers.IsNumeric="True" helpers:TextBoxHelpers.PlaceholderText="宽径" Text="{Binding Width, UpdateSourceTrigger=PropertyChanged, Converter={StaticResource DoubleToStringConverter}}" Width="50"/>
-                                                    <TextBlock Text="×" Margin="4,0" VerticalAlignment="Center"/>
-                                                    <TextBox helpers:TextBoxHelpers.IsNumeric="True" helpers:TextBoxHelpers.PlaceholderText="厚径" Text="{Binding Height, UpdateSourceTrigger=PropertyChanged, Converter={StaticResource DoubleToStringConverter}}" Width="50"/>
-                                                    <TextBlock Text="cm" Style="{StaticResource Text.Unit}" Margin="4,0,0,0" VerticalAlignment="Center"/>
-                                                </StackPanel>
-                                            </Grid>
+                                        <StackPanel Visibility="{Binding IsNormal, Converter={StaticResource BoolToVis}}">
+                                            <Border Background="White" 
+                                                    CornerRadius="10" 
+                                                    Padding="20" 
+                                                    Margin="0,0,0,16"
+                                                    BorderBrush="{StaticResource Brush.BorderLight}" 
+                                                    BorderThickness="1">
+                                                <StackPanel>
+                                                    <!-- 大小：仅显示在卵巢，不显示在附件 -->
+                                                    <Grid Margin="0,0,0,16">
+                                                        <Grid.Style>
+                                                            <Style TargetType="Grid">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Name}" Value="左附件">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding Name}" Value="右附件">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Grid.Style>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Text="大小：" 
+                                                                   Style="{StaticResource Text.Label}" 
+                                                                   Grid.Column="0" 
+                                                                   VerticalAlignment="Center"
+                                                                   FontSize="15"/>
+                                                        <StackPanel Orientation="Horizontal" Grid.Column="1">
+                                                            <TextBox helpers:TextBoxHelpers.IsNumeric="True" 
+                                                                     helpers:TextBoxHelpers.PlaceholderText="长径" 
+                                                                     Text="{Binding Length, UpdateSourceTrigger=PropertyChanged, Converter={StaticResource DoubleToStringConverter}}" 
+                                                                     Width="60"
+                                                                     Style="{StaticResource TextBox.Compact}"/>
+                                                            <TextBlock Text="×" 
+                                                                       Margin="8,0" 
+                                                                       VerticalAlignment="Center"
+                                                                       Foreground="{StaticResource Brush.TextSecondary}"
+                                                                       FontSize="16"/>
+                                                            <TextBox helpers:TextBoxHelpers.IsNumeric="True" 
+                                                                     helpers:TextBoxHelpers.PlaceholderText="宽径" 
+                                                                     Text="{Binding Width, UpdateSourceTrigger=PropertyChanged, Converter={StaticResource DoubleToStringConverter}}" 
+                                                                     Width="60"
+                                                                     Style="{StaticResource TextBox.Compact}"/>
+                                                            <TextBlock Text="×" 
+                                                                       Margin="8,0" 
+                                                                       VerticalAlignment="Center"
+                                                                       Foreground="{StaticResource Brush.TextSecondary}"
+                                                                       FontSize="16"/>
+                                                            <TextBox helpers:TextBoxHelpers.IsNumeric="True" 
+                                                                     helpers:TextBoxHelpers.PlaceholderText="厚径" 
+                                                                     Text="{Binding Height, UpdateSourceTrigger=PropertyChanged, Converter={StaticResource DoubleToStringConverter}}" 
+                                                                     Width="60"
+                                                                     Style="{StaticResource TextBox.Compact}"/>
+                                                            <TextBlock Text="cm" 
+                                                                       Style="{StaticResource Text.Unit}" 
+                                                                       Margin="8,0,0,0" 
+                                                                       VerticalAlignment="Center"
+                                                                       FontSize="14"/>
+                                                        </StackPanel>
+                                                    </Grid>
 
-                                            <Grid Margin="0,0,0,0">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Text="卵泡：" Style="{StaticResource Text.Label}" Grid.Column="0" VerticalAlignment="Center"/>
-                                                <StackPanel Orientation="Horizontal" Grid.Column="1" VerticalAlignment="Center">
-                                                    <TextBlock Text="其内见" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                                    <TextBox helpers:TextBoxHelpers.IsNumeric="True" helpers:TextBoxHelpers.PlaceholderText="数量" Text="{Binding CystCount, UpdateSourceTrigger=PropertyChanged, Converter={StaticResource DoubleToStringConverter}}" Width="50" Margin="0,0,8,0"/>
-                                                    <TextBlock Text="个囊性回声，较大者直径" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                                    <TextBox helpers:TextBoxHelpers.IsNumeric="True" helpers:TextBoxHelpers.PlaceholderText="直径" Text="{Binding MaxCystDiameter, UpdateSourceTrigger=PropertyChanged, Converter={StaticResource DoubleToStringConverter}}" Width="60" Margin="0,0,8,0"/>
-                                                    <TextBlock Text="cm" VerticalAlignment="Center"/>
+                                                    <!-- 卵泡：仅显示在卵巢，不显示在附件 -->
+                                                    <Grid Margin="0,0,0,0">
+                                                        <Grid.Style>
+                                                            <Style TargetType="Grid">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Name}" Value="左附件">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding Name}" Value="右附件">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Grid.Style>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Text="卵泡：" 
+                                                                   Style="{StaticResource Text.Label}" 
+                                                                   Grid.Column="0" 
+                                                                   VerticalAlignment="Center"
+                                                                   FontSize="15"/>
+                                                        <StackPanel Orientation="Horizontal" 
+                                                                    Grid.Column="1" 
+                                                                    VerticalAlignment="Center">
+                                                            <TextBlock Text="其内见" 
+                                                                       VerticalAlignment="Center" 
+                                                                       Margin="0,0,8,0"
+                                                                       Foreground="{StaticResource Brush.TextSecondary}"/>
+                                                            <TextBox helpers:TextBoxHelpers.IsNumeric="True" 
+                                                                     helpers:TextBoxHelpers.PlaceholderText="数量" 
+                                                                     Text="{Binding CystCount, UpdateSourceTrigger=PropertyChanged, Converter={StaticResource DoubleToStringConverter}}" 
+                                                                     Width="60" 
+                                                                     Margin="0,0,8,0"
+                                                                     Style="{StaticResource TextBox.Compact}"/>
+                                                            <TextBlock Text="个囊性回声，较大者直径" 
+                                                                       VerticalAlignment="Center" 
+                                                                       Margin="0,0,8,0"
+                                                                       Foreground="{StaticResource Brush.TextSecondary}"/>
+                                                            <TextBox helpers:TextBoxHelpers.IsNumeric="True" 
+                                                                     helpers:TextBoxHelpers.PlaceholderText="直径" 
+                                                                     Text="{Binding MaxCystDiameter, UpdateSourceTrigger=PropertyChanged, Converter={StaticResource DoubleToStringConverter}}" 
+                                                                     Width="70" 
+                                                                     Margin="0,0,8,0"
+                                                                     Style="{StaticResource TextBox.Compact}"/>
+                                                            <TextBlock Text="cm" 
+                                                                       VerticalAlignment="Center"
+                                                                       Foreground="{StaticResource Brush.TextSecondary}"/>
+                                                        </StackPanel>
+                                                    </Grid>
                                                 </StackPanel>
-                                            </Grid>
+                                            </Border>
                                         </StackPanel>
 
                                         <!-- 异常 -->
                                         <StackPanel Visibility="{Binding IsAbnormal, Converter={StaticResource BoolToVis}}">
-                                            <TextBlock Text="异常类型（以下可多选）：" Style="{StaticResource Text.Label}" FontWeight="SemiBold" Margin="0,0,0,12"/>
+                                            <Border Background="#FFF5F5" 
+                                                    CornerRadius="10" 
+                                                    Padding="16" 
+                                                    Margin="0,0,0,20"
+                                                    BorderBrush="#FFE0E0" 
+                                                    BorderThickness="1">
+                                                <TextBlock Text="异常类型（以下可多选）：" 
+                                                           Style="{StaticResource Text.Label}" 
+                                                           FontWeight="SemiBold" 
+                                                           FontSize="15"
+                                                           Foreground="#D32F2F"
+                                                           Margin="0,0,0,0"/>
+                                            </Border>
 
-                                            <CheckBox Content="A. 单房囊肿" IsChecked="{Binding HasUnilocularCyst}" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                            <CheckBox Content="A. 单房囊肿" 
+                                                      IsChecked="{Binding HasUnilocularCyst}" 
+                                                      FontWeight="SemiBold" 
+                                                      FontSize="15"
+                                                      Margin="0,0,0,12"/>
                                             
                                             <!-- A. 单房囊肿详情 -->
                                             <Expander Style="{StaticResource CollapsibleCard}" Visibility="{Binding HasUnilocularCyst, Converter={StaticResource BoolToVis}}" IsExpanded="{Binding IsUnilocularExpanded, Mode=TwoWay}">
@@ -1487,7 +1732,11 @@
                                                 </StackPanel>
                                             </Expander>
 
-                                            <CheckBox Content="B. 多房囊肿" IsChecked="{Binding HasMultilocularCyst}" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                            <CheckBox Content="B. 多房囊肿" 
+                                                      IsChecked="{Binding HasMultilocularCyst}" 
+                                                      FontWeight="SemiBold" 
+                                                      FontSize="15"
+                                                      Margin="0,0,0,12"/>
                                             
                                             <!-- B. 多房囊肿详情 -->
                                             <Expander Style="{StaticResource CollapsibleCard}" Visibility="{Binding HasMultilocularCyst, Converter={StaticResource BoolToVis}}" IsExpanded="{Binding IsMultilocularExpanded, Mode=TwoWay}">
@@ -1584,7 +1833,11 @@
                                                 </StackPanel>
                                             </Expander>
 
-                                            <CheckBox Content="C. 囊实性回声肿物" IsChecked="{Binding HasSolidCyst}" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                            <CheckBox Content="C. 囊实性回声肿物" 
+                                                      IsChecked="{Binding HasSolidCyst}" 
+                                                      FontWeight="SemiBold" 
+                                                      FontSize="15"
+                                                      Margin="0,0,0,12"/>
                                             
                                             <!-- C. 囊实性回声肿物详情 -->
                                             <Expander Style="{StaticResource CollapsibleCard}" Visibility="{Binding HasSolidCyst, Converter={StaticResource BoolToVis}}" IsExpanded="{Binding IsSolidCystExpanded, Mode=TwoWay}">
@@ -1648,7 +1901,7 @@
                                                                     <ColumnDefinition Width="Auto"/>
                                                                     <ColumnDefinition Width="*"/>
                                                                 </Grid.ColumnDefinitions>
-                                                                <TextBlock Text="最大者：大小" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                                                                <TextBlock Text="最大者大小" Style="{StaticResource Text.Label}" Grid.Column="0"/>
                                                                 <StackPanel Orientation="Horizontal" Grid.Column="1">
                                                                     <TextBox helpers:TextBoxHelpers.IsNumeric="True" helpers:TextBoxHelpers.PlaceholderText="长径" Text="{Binding SolidCyst.PapillaryLength, UpdateSourceTrigger=PropertyChanged, Converter={StaticResource DoubleToStringConverter}}" Width="48"/>
                                                                     <TextBlock Text="×" Margin="4,0"/>
@@ -1809,7 +2062,11 @@
                                                 </StackPanel>
                                             </Expander>
 
-                                            <CheckBox Content="D. 实性回声肿物" IsChecked="{Binding HasSolidMass}" FontWeight="SemiBold" Margin="0,0,0,0"/>
+                                            <CheckBox Content="D. 实性回声肿物" 
+                                                      IsChecked="{Binding HasSolidMass}" 
+                                                      FontWeight="SemiBold" 
+                                                      FontSize="15"
+                                                      Margin="0,0,0,12"/>
                                             
                                             <!-- D. 实性回声肿物详情 -->
                                             <Expander Style="{StaticResource CollapsibleCard}" Visibility="{Binding HasSolidMass, Converter={StaticResource BoolToVis}}" IsExpanded="{Binding IsSolidMassExpanded, Mode=TwoWay}">
@@ -1903,6 +2160,7 @@
                                             </Expander>
                                         </StackPanel>
                                     </StackPanel>
+                                    </Border>
                                 </DataTemplate>
                             </TabControl.ContentTemplate>
                         </TabControl>
@@ -1991,6 +2249,79 @@
                                 <TextBox Text="{Binding Report.EndoOtherText, UpdateSourceTrigger=PropertyChanged}" Width="150" Margin="8,0,0,0" Visibility="{Binding Report.IsEndoOther, Converter={StaticResource BoolToVis}}"/>
                             </StackPanel>
                         </WrapPanel>
+
+                        <!-- 自动O-RADS分级提示 -->
+                        <Border CornerRadius="10" 
+                                Padding="16" 
+                                Margin="0,0,0,16"
+                                BorderThickness="2"
+                                Visibility="{Binding Report.AutoORadsResult, Converter={StaticResource NullToVis}}">
+                            <Border.Background>
+                                <Binding Path="Report.AutoORadsResult" Converter="{StaticResource ORadsLevelToBgColor}"/>
+                            </Border.Background>
+                            <Border.BorderBrush>
+                                <Binding Path="Report.AutoORadsResult" Converter="{StaticResource ORadsLevelToBorderColor}"/>
+                            </Border.BorderBrush>
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                    <TextBlock Text="🤖 自动分级建议：" 
+                                               FontWeight="SemiBold" 
+                                               FontSize="15"
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,12,0">
+                                        <TextBlock.Foreground>
+                                            <Binding Path="Report.AutoORadsResult" Converter="{StaticResource ORadsLevelToColor}"/>
+                                        </TextBlock.Foreground>
+                                    </TextBlock>
+                                    <Border Background="White" 
+                                            CornerRadius="6" 
+                                            Padding="10,6"
+                                            BorderThickness="2">
+                                        <Border.BorderBrush>
+                                            <Binding Path="Report.AutoORadsResult" Converter="{StaticResource ORadsLevelToBorderColor}"/>
+                                        </Border.BorderBrush>
+                                        <TextBlock Text="{Binding Report.AutoORadsResult.LevelString}" 
+                                                   FontWeight="Bold" 
+                                                   FontSize="18">
+                                            <TextBlock.Foreground>
+                                                <Binding Path="Report.AutoORadsResult" Converter="{StaticResource ORadsLevelToColor}"/>
+                                            </TextBlock.Foreground>
+                                        </TextBlock>
+                                    </Border>
+                                </StackPanel>
+                                <TextBlock Text="{Binding Report.AutoORadsResult.Reason}" 
+                                           TextWrapping="Wrap"
+                                           FontSize="13"
+                                           Foreground="{StaticResource Brush.TextPrimary}"
+                                           Margin="0,0,0,8"
+                                           LineHeight="20"/>
+                                <Border Background="White" 
+                                        CornerRadius="6" 
+                                        Padding="12,8"
+                                        Margin="0,0,0,8"
+                                        Visibility="{Binding Report.AutoORadsResult.Suggestion, Converter={StaticResource StringToVis}}"
+                                        BorderBrush="{StaticResource Brush.BorderLight}" 
+                                        BorderThickness="1">
+                                    <TextBlock TextWrapping="Wrap"
+                                               FontSize="12"
+                                               Foreground="{StaticResource Brush.TextSecondary}"
+                                               FontStyle="Italic"
+                                               LineHeight="18">
+                                        <Run Text="💡 提示：" FontWeight="SemiBold" Foreground="{StaticResource Brush.Primary}"/>
+                                        <Run Text="{Binding Report.AutoORadsResult.Suggestion}"/>
+                                    </TextBlock>
+                                </Border>
+                                <CheckBox Content="✓ 使用自动分级建议" 
+                                          IsChecked="{Binding Report.UseAutoORads}"
+                                          FontSize="13"
+                                          Margin="0,8,0,0"
+                                          FontWeight="Medium">
+                                    <CheckBox.Foreground>
+                                        <Binding Path="Report.AutoORadsResult" Converter="{StaticResource ORadsLevelToColor}"/>
+                                    </CheckBox.Foreground>
+                                </CheckBox>
+                            </StackPanel>
+                        </Border>
 
                         <Grid Margin="0,0,0,20">
                             <Grid.ColumnDefinitions>
