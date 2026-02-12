@@ -107,140 +107,180 @@ namespace SURS.App.Services
                             if (report.IncludeUterus)
                             {
                                 var uterusPara = new System.Text.StringBuilder();
-                                uterusPara.Append($"子宫{report.Uterus.Position}，子宫体大小约：{report.Uterus.Length}*{report.Uterus.APDiameter}*{report.Uterus.Width}cm，");
-                                if (report.Uterus.ShouldMeasureCervix && (report.Uterus.CervixLength > 0 || report.Uterus.CervixAP > 0))
+                                var uterusParts = new System.Collections.Generic.List<string>();
+
+                                if (!string.IsNullOrWhiteSpace(report.Uterus.Position))
                                 {
-                                    uterusPara.Append($"宫颈大小约：{report.Uterus.CervixLength}*{report.Uterus.CervixAP}cm ");
+                                    uterusParts.Add($"子宫{report.Uterus.Position}");
                                 }
 
-                            var myometriumEchoText = report.Uterus.MyometriumEcho == "均匀"
-                                ? "均匀"
-                                : report.Uterus.MyometriumEcho == "不均"
-                                    ? "不均匀"
-                                    : string.Empty;
-
-                            if (!string.IsNullOrWhiteSpace(myometriumEchoText))
-                                uterusPara.Append($"肌层回声{myometriumEchoText}");
-
-                            if (report.Uterus.MyometriumEcho == "不均")
-                            {
-                                var features = new System.Collections.Generic.List<string>();
-                                if (report.Uterus.MyometriumThickeningFocal) features.Add("局限性增厚");
-                                if (report.Uterus.MyometriumThickeningDiffuse) features.Add("弥漫性增厚");
-
-                                if (features.Any())
-                                    uterusPara.Append($"，可见{string.Join("、", features)}");
-
-                                if (report.Uterus.MyometriumThickeningNodule)
+                                var hasUterusSize = report.Uterus.Length > 0 && report.Uterus.APDiameter > 0 && report.Uterus.Width > 0;
+                                if (hasUterusSize)
                                 {
-                                    var nodules = report.Uterus.Nodules
-                                        .Where(n => n != null && !n.IsEmpty)
-                                        .ToList();
+                                    uterusParts.Add($"子宫体大小约：{report.Uterus.Length}*{report.Uterus.APDiameter}*{report.Uterus.Width}cm");
+                                }
 
-                                    if (nodules.Any())
+                                if (report.Uterus.ShouldMeasureCervix && report.Uterus.CervixLength > 0 && report.Uterus.CervixAP > 0)
+                                {
+                                    uterusParts.Add($"宫颈大小约：{report.Uterus.CervixLength}*{report.Uterus.CervixAP}cm");
+                                }
+
+                                if (uterusParts.Any())
+                                {
+                                    uterusPara.Append(string.Join("，", uterusParts));
+                                }
+
+                                var myometriumEchoText = report.Uterus.MyometriumEcho == "均匀"
+                                    ? "均匀"
+                                    : report.Uterus.MyometriumEcho == "不均"
+                                        ? "不均匀"
+                                        : string.Empty;
+
+                                if (!string.IsNullOrWhiteSpace(myometriumEchoText))
+                                {
+                                    if (uterusPara.Length > 0) uterusPara.Append("，");
+                                    uterusPara.Append($"肌层回声{myometriumEchoText}");
+                                }
+
+                                if (report.Uterus.MyometriumEcho == "不均")
+                                {
+                                    var features = new System.Collections.Generic.List<string>();
+                                    if (report.Uterus.MyometriumThickeningFocal) features.Add("局限性增厚");
+                                    if (report.Uterus.MyometriumThickeningDiffuse) features.Add("弥漫性增厚");
+
+                                    if (features.Any())
+                                        uterusPara.Append($"，可见{string.Join("、", features)}");
+
+                                    if (report.Uterus.MyometriumThickeningNodule)
                                     {
-                                        if (features.Any()) uterusPara.Append("；");
-                                        else uterusPara.Append("，");
+                                        var nodules = report.Uterus.Nodules
+                                            .Where(n => n != null && !n.IsEmpty)
+                                            .ToList();
 
-                                        string DescribeNodule(MyometriumNodule n)
+                                        if (nodules.Any())
                                         {
-                                            var parts = new System.Collections.Generic.List<string>();
+                                            if (features.Any()) uterusPara.Append("；");
+                                            else uterusPara.Append("，");
 
-                                            if (!string.IsNullOrWhiteSpace(n.Location))
-                                                parts.Add($"位于{n.Location}");
+                                            string DescribeNodule(MyometriumNodule n)
+                                            {
+                                                var parts = new System.Collections.Generic.List<string>();
 
-                                            var hasSize = n.Length > 0 && n.Width > 0 && n.Height > 0;
-                                            if (hasSize)
-                                                parts.Add($"大小约{n.Length}*{n.Width}*{n.Height}cm");
+                                                if (!string.IsNullOrWhiteSpace(n.Location))
+                                                    parts.Add($"位于{n.Location}");
 
-                                            if (!string.IsNullOrWhiteSpace(n.Echo))
-                                                parts.Add($"{n.Echo}");
+                                                var hasSize = n.Length > 0 && n.Width > 0 && n.Height > 0;
+                                                if (hasSize)
+                                                    parts.Add($"大小约{n.Length}*{n.Width}*{n.Height}cm");
 
-                                            if (!string.IsNullOrWhiteSpace(n.Boundary))
-                                                parts.Add($"边界{n.Boundary}");
+                                                if (!string.IsNullOrWhiteSpace(n.Echo))
+                                                    parts.Add($"{n.Echo}");
 
-                                            if (n.Protrudes)
-                                                parts.Add("外突");
+                                                if (!string.IsNullOrWhiteSpace(n.Boundary))
+                                                    parts.Add($"边界{n.Boundary}");
 
-                                            if (n.CompressesCavity)
-                                                parts.Add("压迫宫腔");
+                                                if (n.Protrudes)
+                                                    parts.Add("外突");
 
-                                            return string.Join("，", parts);
-                                        }
+                                                if (n.CompressesCavity)
+                                                    parts.Add("压迫宫腔");
 
-                                        // 多发且“只描述较大者”时，按体积（长×宽×高）自动取最大的一条；否则全部写出
+                                                return string.Join("，", parts);
+                                            }
+
+                                        // “只描述较大者”模式下，仍按用户填写的结节全部描述（通常仅填写较大结节）
                                         var toOutput = nodules;
-                                        if (nodules.Count >= 2 && report.Uterus.ReportOnlyLargestNodule)
-                                        {
-                                            var byVolume = nodules.OrderByDescending(n => n.Length * n.Width * n.Height).FirstOrDefault();
-                                            if (byVolume != null)
-                                                toOutput = new System.Collections.Generic.List<MyometriumNodule> { byVolume };
-                                        }
 
                                         if (toOutput.Count > 1)
-                                            uterusPara.Append("可见多发结节");
-                                        else if (nodules.Count >= 2)
-                                            uterusPara.Append("可见多发结节，较大者");
+                                        {
+                                            uterusPara.Append(report.Uterus.ReportOnlyLargestNodule
+                                                ? "可见多发结节，较大者"
+                                                : "可见多发结节");
+                                        }
                                         else
+                                        {
                                             uterusPara.Append("可见结节");
+                                        }
 
                                         var details = toOutput
-                                            .Select(DescribeNodule)
+                                            .Select((n, idx) =>
+                                            {
+                                                var desc = DescribeNodule(n);
+                                                if (string.IsNullOrWhiteSpace(desc)) return string.Empty;
+                                                return toOutput.Count > 1 ? $"结节{idx + 1}，{desc}" : desc;
+                                            })
                                             .Where(s => !string.IsNullOrWhiteSpace(s))
                                             .ToList();
 
-                                        if (details.Any())
-                                            uterusPara.Append($"，{string.Join("；", details)}");
+                                            if (details.Any())
+                                                uterusPara.Append($"，{string.Join("；", details)}");
+                                        }
                                     }
                                 }
-                            }
-                            uterusPara.Append("。");
-                            
-                            if (uterusPara.Length > 0)
-                            {
-                                findingsText.Append(uterusPara);
-                                findingsText.Append("\n\n");
-                            }
+
+                                if (uterusPara.Length > 0)
+                                {
+                                    uterusPara.Append("。");
+                                    findingsText.Append(uterusPara);
+                                    findingsText.Append("\n\n");
+                                }
                             }
 
                             // 子宫内膜部分
                             if (report.IncludeEndometrium)
                             {
                                 var endometriumPara = new System.Text.StringBuilder();
-                                var endometriumThicknessText = report.Endometrium.CannotMeasure ? "无法测量" : $"{report.Endometrium.Thickness}cm";
-                                if (report.Endometrium.IsSingleLayer)
-                                    endometriumThicknessText += "（单层）";
-                                else
-                                    endometriumThicknessText += "（双层）";
-                                var endometriumUniformityText = report.Endometrium.EchoUniform ? "回声：均匀" : report.Endometrium.EchoNonUniform ? "回声：不均匀" : string.Empty;
-                                endometriumPara.Append($"子宫内膜厚{endometriumThicknessText}");
-                                if (!string.IsNullOrWhiteSpace(report.Endometrium.EchoType))
-                                    endometriumPara.Append($"，{report.Endometrium.EchoType}");
-                                if (!string.IsNullOrWhiteSpace(endometriumUniformityText))
-                                    endometriumPara.Append($"，{endometriumUniformityText}");
-                                if (report.Endometrium.EchoNonUniform)
+                                var endometriumParts = new System.Collections.Generic.List<string>();
+
+                                if (report.Endometrium.CannotMeasure)
+                                {
+                                    endometriumParts.Add("子宫内膜厚无法测量");
+                                }
+                                else if (report.Endometrium.Thickness > 0)
+                                {
+                                    var endometriumThicknessText = $"{report.Endometrium.Thickness}cm";
+                                    endometriumThicknessText += report.Endometrium.IsSingleLayer ? "（单层）" : "（双层）";
+                                    endometriumParts.Add($"子宫内膜厚{endometriumThicknessText}");
+                                }
+
+                                var echoType = report.Endometrium.EchoType;
+                                var uniformity = report.Endometrium.EchoUniformity;
+                                if (!string.IsNullOrWhiteSpace(echoType) || !string.IsNullOrWhiteSpace(uniformity))
+                                {
+                                    if (!string.IsNullOrWhiteSpace(echoType) && !string.IsNullOrWhiteSpace(uniformity))
+                                        endometriumParts.Add($"{echoType}，{uniformity}");
+                                    else if (!string.IsNullOrWhiteSpace(echoType))
+                                        endometriumParts.Add($"{echoType}"); 
+                                    else
+                                        endometriumParts.Add($"{uniformity}");
+                                }
+
+                                if (report.Endometrium.EchoUniformity == "不均匀")
                                 {
                                     var nonUniformTypes = new System.Collections.Generic.List<string>();
                                     if (report.Endometrium.NonUniformNoCyst) nonUniformTypes.Add("未见囊样结构");
                                     if (report.Endometrium.NonUniformRegularCyst) nonUniformTypes.Add("可见形态规则的囊样结构");
                                     if (report.Endometrium.NonUniformIrregularCyst) nonUniformTypes.Add("可见不规则的囊样结构");
-                                    if (nonUniformTypes.Any()) endometriumPara.Append($"，{string.Join("，", nonUniformTypes)}");
+                                    if (nonUniformTypes.Any()) endometriumParts.Add($"{string.Join("，", nonUniformTypes)}");
                                 }
+
                                 if (!string.IsNullOrWhiteSpace(report.Endometrium.Midline))
                                 {
                                     if (report.Endometrium.Midline == "线性")
-                                        endometriumPara.Append("，宫腔线呈线性");
+                                        endometriumParts.Add("宫腔线呈线性");
                                     else if (report.Endometrium.Midline == "非线性")
-                                        endometriumPara.Append("，宫腔线呈非线性");
+                                        endometriumParts.Add("宫腔线呈非线性");
                                     else
-                                        endometriumPara.Append($"，宫腔线{report.Endometrium.Midline}");
+                                        endometriumParts.Add($"宫腔线{report.Endometrium.Midline}");
                                 }
+
                                 if (!string.IsNullOrWhiteSpace(report.Endometrium.JunctionalZone))
-                                    endometriumPara.Append($"，结合带{report.Endometrium.JunctionalZone}");
-                                endometriumPara.Append("。");
-                                
-                                if (endometriumPara.Length > 0)
+                                    endometriumParts.Add($"结合带{report.Endometrium.JunctionalZone}");
+
+                                if (endometriumParts.Any())
                                 {
+                                    endometriumPara.Append(string.Join("，", endometriumParts));
+                                    endometriumPara.Append("。");
                                     findingsText.Append(endometriumPara);
                                 }
                                 
@@ -313,9 +353,13 @@ namespace SURS.App.Services
                                 foreach (var region in report.AdnexaRegions)
                                 {
                                     if (region == null) continue;
+                                    
+                                    // 如果未选择评价，则不显示该区域
+                                    if (!region.HasEvaluation) continue;
+                                    
                                     var regionText = new System.Text.StringBuilder();
 
-                                    // 正常：大小 + 囊性回声（卵泡）描述；未填写时直接“未见明显异常回声”
+                                    // 正常：大小 + 囊性回声（卵泡）描述；未填写时直接"未见明显异常回声"
                                     if (region.IsNormal)
                                     {
                                         var hasSize = region.Length > 0 && region.Width > 0 && region.Height > 0;

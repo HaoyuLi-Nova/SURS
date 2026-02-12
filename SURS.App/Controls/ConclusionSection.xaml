@@ -1,0 +1,113 @@
+<UserControl x:Class="SURS.App.Controls.ConclusionSection"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:converters="clr-namespace:SURS.App.Converters"
+             xmlns:controls="clr-namespace:SURS.App.Controls">
+    <Expander Style="{StaticResource CollapsibleCard}">
+        <Expander.Header>
+            <StackPanel Orientation="Horizontal">
+                <Border Width="4" Height="24" Background="White" CornerRadius="2" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                <TextBlock Text="结论与备注区" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Expander.Header>
+        <StackPanel>
+            <!-- 超声提示 -->
+            <Border Background="#F0F7FF" CornerRadius="8" Padding="16,12" Margin="0,0,0,20">
+                <TextBlock Text="超声提示" FontWeight="SemiBold" FontSize="16" Foreground="{StaticResource Brush.Primary}"/>
+            </Border>
+
+            <Grid Margin="0,0,0,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="子宫（描述）：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                <TextBox Text="{Binding Report.UterusDescription, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1" TextWrapping="Wrap" Height="60" VerticalContentAlignment="Top" Padding="8"/>
+            </Grid>
+
+            <TextBlock Text="子宫内膜（多选）：" Style="{StaticResource Text.Label}" Margin="0,0,0,8"/>
+            <WrapPanel Margin="0,0,0,20">
+                <CheckBox Content="子宫内膜增生" IsChecked="{Binding Report.IsEndoHyperplasia}"/>
+                <CheckBox Content="子宫内膜息肉" IsChecked="{Binding Report.IsEndoPolyp}"/>
+                <CheckBox Content="子宫内膜癌" IsChecked="{Binding Report.IsEndoCancer}"/>
+                <CheckBox Content="子宫黏膜下肌瘤" IsChecked="{Binding Report.IsSubmucosalMyoma}"/>
+                <StackPanel Orientation="Horizontal">
+                    <CheckBox Content="其他" IsChecked="{Binding Report.IsEndoOther}"/>
+                    <TextBox Text="{Binding Report.EndoOtherText, UpdateSourceTrigger=PropertyChanged}" Width="150" Margin="8,0,0,0" Visibility="{Binding Report.IsEndoOther, Converter={StaticResource BoolToVis}}"/>
+                </StackPanel>
+            </WrapPanel>
+
+            <!-- 自动O-RADS分级提示 -->
+            <controls:ORadsResultCard/>
+
+            <Grid Margin="0,0,0,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="O-RADS 分级：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                    <RadioButton GroupName="ORads" Content="O-RADS 0" IsChecked="{Binding Report.ORadsLevel, Converter={StaticResource RadioBoolConverter}, ConverterParameter=O-RADS 0}"/>
+                    <RadioButton GroupName="ORads" Content="O-RADS 1" IsChecked="{Binding Report.ORadsLevel, Converter={StaticResource RadioBoolConverter}, ConverterParameter=O-RADS 1}"/>
+                    <RadioButton GroupName="ORads" Content="O-RADS 2" IsChecked="{Binding Report.ORadsLevel, Converter={StaticResource RadioBoolConverter}, ConverterParameter=O-RADS 2}"/>
+                    <RadioButton GroupName="ORads" Content="O-RADS 3" IsChecked="{Binding Report.ORadsLevel, Converter={StaticResource RadioBoolConverter}, ConverterParameter=O-RADS 3}"/>
+                    <RadioButton GroupName="ORads" Content="O-RADS 4" IsChecked="{Binding Report.ORadsLevel, Converter={StaticResource RadioBoolConverter}, ConverterParameter=O-RADS 4}"/>
+                    <RadioButton GroupName="ORads" Content="O-RADS 5" IsChecked="{Binding Report.ORadsLevel, Converter={StaticResource RadioBoolConverter}, ConverterParameter=O-RADS 5}"/>
+                </WrapPanel>
+            </Grid>
+
+            <!-- 注明 -->
+            <Border Background="#F0F7FF" CornerRadius="8" Padding="16,12" Margin="0,20,0,20">
+                <TextBlock Text="注明" FontWeight="SemiBold" FontSize="16" Foreground="{StaticResource Brush.Primary}"/>
+            </Border>
+            <Border Background="#F8F9FA" BorderBrush="{StaticResource Brush.BorderLight}" BorderThickness="1.5" CornerRadius="10" Padding="20" Margin="0,0,0,20">
+                <StackPanel>
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
+                        <Run Text="如果存在一个以上的附件肿物，只评估具有最复杂超声形态的肿物，当所有肿物的超声形态是相似的，评估最大的一个或超声最容易探及的一个。" FontSize="12"/>
+                    </TextBlock>
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
+                        <Run Text="实性成分突出囊壁大于 3mm，则称为乳头。如果不确定是否存在实性的乳头状突起，则按照存在来记录。畸胎瘤中的高回声团、子宫内膜异位囊肿内壁的血液凝固不能视为乳头状突起。" FontSize="12"/>
+                    </TextBlock>
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
+                        <Run Text="血流评分：主观评价肿物整体的彩色多普勒血流分布情况，包括囊壁，分隔，实性成分。0 分：无血流；1 分：少量血流；2 分：中等量血流；3 分：丰富血流。" FontSize="12"/>
+                    </TextBlock>
+                    <TextBlock TextWrapping="Wrap">
+                        <Run Text="至少存在一个完整的分隔的囊肿为多房囊肿，如果囊肿内的分隔为不完全的，虽然在某些切面上看似乎是多房囊肿，但该囊肿应为单房囊肿。" FontSize="12"/>
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
+            <!-- 报告签署 -->
+            <Border Background="#F0F7FF" CornerRadius="8" Padding="16,12" Margin="0,0,0,20">
+                <TextBlock Text="报告签署" FontWeight="SemiBold" FontSize="16" Foreground="{StaticResource Brush.Primary}"/>
+            </Border>
+
+            <Grid Margin="0,0,0,16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="备注：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                <TextBox Text="{Binding Report.Remarks, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1"/>
+            </Grid>
+
+            <Grid Margin="0,0,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="录入员：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                <TextBox Text="{Binding Report.Typist, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1" Width="120" Margin="0,0,16,0"/>
+                <TextBlock Text="诊断医师：" Style="{StaticResource Text.Label}" Grid.Column="2"/>
+                <TextBox Text="{Binding Report.Diagnostician, UpdateSourceTrigger=PropertyChanged}" Grid.Column="3" Width="120" Margin="0,0,16,0"/>
+                <TextBlock Text="时间：" Style="{StaticResource Text.Label}" Grid.Column="4"/>
+                <TextBox Text="{Binding Report.ReportDate, UpdateSourceTrigger=PropertyChanged, Converter={StaticResource DateTimeConverter}}" Grid.Column="5" Width="150"/>
+            </Grid>
+        </StackPanel>
+    </Expander>
+</UserControl>
+

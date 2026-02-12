@@ -1,0 +1,26 @@
+<UserControl x:Class="SURS.App.Controls.TemplateSelection"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:converters="clr-namespace:SURS.App.Converters">
+    <Expander Style="{StaticResource CollapsibleCard}">
+        <Expander.Header>
+            <StackPanel Orientation="Horizontal">
+                <Border Width="4" Height="24" Background="White" CornerRadius="2" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                <TextBlock Text="模板选择" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Expander.Header>
+        <StackPanel>
+            <Border Background="#E8F5E9" CornerRadius="8" Padding="16,12" Margin="0,0,0,20">
+                <StackPanel>
+                    <TextBlock Text="请选择需要填写的模板内容（可多选）" FontWeight="SemiBold" FontSize="16" Foreground="#2E7D32" Margin="0,0,0,12"/>
+                    <StackPanel Orientation="Horizontal">
+                        <CheckBox Content="子宫" IsChecked="{Binding Report.IncludeUterus}" Margin="0,0,20,0"/>
+                        <CheckBox Content="子宫内膜" IsChecked="{Binding Report.IncludeEndometrium}" Margin="0,0,20,0"/>
+                        <CheckBox Content="卵巢" IsChecked="{Binding Report.IncludeOvary}" Margin="0,0,20,0"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </Expander>
+</UserControl>
+

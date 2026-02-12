@@ -1,0 +1,49 @@
+<UserControl x:Class="SURS.App.Controls.FluidSection"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:converters="clr-namespace:SURS.App.Converters"
+             xmlns:helpers="clr-namespace:SURS.App.Helpers">
+    <Expander Style="{StaticResource CollapsibleCard}">
+        <Expander.Header>
+            <StackPanel Orientation="Horizontal">
+                <Border Width="4" Height="24" Background="White" CornerRadius="2" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                <TextBlock Text="合并积液" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Expander.Header>
+        <StackPanel>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                <RadioButton GroupName="Fluid" Content="无" IsChecked="{Binding Report.HasNoFluid}"/>
+                <RadioButton GroupName="Fluid" Content="有" IsChecked="{Binding Report.HasFluid}"/>
+            </StackPanel>
+
+            <StackPanel Visibility="{Binding Report.HasFluid, Converter={StaticResource BoolToVis}}">
+                <ItemsControl ItemsSource="{Binding Report.FluidLocations}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="White" BorderBrush="{StaticResource Brush.BorderLight}" BorderThickness="1.5" CornerRadius="8" Padding="14,10" Margin="0,0,12,12">
+                                <StackPanel>
+                                    <CheckBox IsChecked="{Binding IsSelected}" Content="{Binding Name}" Margin="0,0,0,8" FontWeight="Medium"/>
+                                    <StackPanel Orientation="Horizontal" Visibility="{Binding IsSelected, Converter={StaticResource BoolToVis}}">
+                                        <TextBlock Text="深度：" Style="{StaticResource Text.LabelSecondary}"/>
+                                        <TextBox helpers:TextBoxHelpers.IsNumeric="True" Text="{Binding Depth, UpdateSourceTrigger=PropertyChanged}" Width="60" Height="32"/>
+                                        <TextBlock Text="cm" Style="{StaticResource Text.Unit}" Margin="4,0,0,0"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <CheckBox Content="其他" IsChecked="{Binding Report.HasFluidOther}" Margin="0,0,8,0"/>
+                    <TextBox Text="{Binding Report.FluidOtherLocation, UpdateSourceTrigger=PropertyChanged}" Width="200" Visibility="{Binding Report.HasFluidOther, Converter={StaticResource BoolToVis}}"/>
+                </StackPanel>
+            </StackPanel>
+        </StackPanel>
+    </Expander>
+</UserControl>
+

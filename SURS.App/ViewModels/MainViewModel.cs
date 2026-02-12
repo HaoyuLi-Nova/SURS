@@ -2,22 +2,29 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SURS.App.Models;
 using SURS.App.Services;
+using SURS.App.Helpers;
+using SURS.App.Common;
 using System;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Windows;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
-using Microsoft.Win32;
 using System.IO;
+using System.Text;
+using System.Threading.Tasks;
+using System.Threading;
 
 namespace SURS.App.ViewModels
 {
-    public class MainViewModel : ObservableObject
+    public class MainViewModel : ObservableObject, IDisposable
     {
         private readonly PdfService _pdfService;
-        private System.Threading.CancellationTokenSource? _previewUpdateCancellation;
-        private const int PreviewUpdateDelayMs = 0; // 无等待，变更后立即开始生成预览
+        private readonly IDialogService _dialogService;
+        private readonly ILogger _logger;
+        private readonly SemaphoreSlim _previewUpdateSemaphore = new SemaphoreSlim(1, 1);
+        private volatile bool _previewUpdatePending;
+        private readonly EventSubscriptionManager _subscriptionManager = new EventSubscriptionManager();
 
         private SursReport _report = null!;
         public SursReport Report
@@ -25,16 +32,15 @@ namespace SURS.App.ViewModels
             get => _report;
             private set
             {
-                if (_report != null)
-                {
-                    _report.PropertyChanged -= Report_PropertyChanged;
-                }
+                // 清理旧订阅
+                _subscriptionManager.UnsubscribeAll();
                 
                 SetProperty(ref _report, value);
                 
                 if (_report != null)
                 {
-                    _report.PropertyChanged += Report_PropertyChanged;
+                    // 通过订阅管理器订阅 Report 的属性变化
+                    _subscriptionManager.SubscribePropertyChanged(_report, Report_PropertyChanged);
                     SubscribeToNestedObjects(_report);
                     TriggerPreviewUpdate();
                 }
@@ -62,16 +68,13 @@ namespace SURS.App.ViewModels
             set => SetProperty(ref _isPreviewVisible, value);
         }
 
-        // 基准缩放值：0.25 对应 100% 显示
-        private const double BaseZoom = 0.25;
-        
-        private double _previewZoom = BaseZoom; // 初始值设为基准值（100%）
+        private double _previewZoom = PreviewConstants.BaseZoom; // 初始值设为基准值（100%）
         public double PreviewZoom
         {
             get => _previewZoom;
             set
             {
-                if (SetProperty(ref _previewZoom, Math.Max(BaseZoom, Math.Min(3.0, value))))
+                if (SetProperty(ref _previewZoom, Math.Max(PreviewConstants.MinZoom, Math.Min(PreviewConstants.MaxZoom, value))))
                 {
                     // 当缩放值变化时，通知PreviewZoomPercent也更新
                     OnPropertyChanged(nameof(PreviewZoomPercent));
@@ -84,10 +87,17 @@ namespace SURS.App.ViewModels
         /// </summary>
         public double PreviewZoomPercent
         {
-            get => (PreviewZoom / BaseZoom) * 100; // 0.25 = 100%, 0.5 = 200%, 1.0 = 400%
+            get => (PreviewZoom / PreviewConstants.BaseZoom) * 100; // 0.25 = 100%, 0.5 = 200%, 1.0 = 400%
         }
 
-        public RelayCommand ExportPdfCommand { get; }
+        private bool _isExporting;
+        public bool IsExporting
+        {
+            get => _isExporting;
+            private set => SetProperty(ref _isExporting, value);
+        }
+
+        public AsyncRelayCommand ExportPdfCommand { get; }
         public RelayCommand SelectImageCommand { get; }
         public RelayCommand ResetCommand { get; }
         public RelayCommand TogglePreviewCommand { get; }
@@ -105,15 +115,13 @@ namespace SURS.App.ViewModels
             // 仅当按住 Ctrl 时才缩放
             if (ctrlPressed)
             {
-                // 基于基准值的10%作为步进（相对于显示100%的10%）
-                double zoomStep = BaseZoom * 0.1; // 每次缩放10%（相对于基准值）
                 if (delta > 0)
                 {
-                    PreviewZoom = Math.Min(3.0, PreviewZoom + zoomStep);
+                    PreviewZoom = Math.Min(PreviewConstants.MaxZoom, PreviewZoom + PreviewConstants.ZoomStep);
                 }
                 else
                 {
-                    PreviewZoom = Math.Max(BaseZoom, PreviewZoom - zoomStep);
+                    PreviewZoom = Math.Max(PreviewConstants.MinZoom, PreviewZoom - PreviewConstants.ZoomStep);
                 }
                 return true; // 已处理缩放
             }
@@ -123,13 +131,16 @@ namespace SURS.App.ViewModels
         public MainViewModel()
         {
             _pdfService = new PdfService();
-            ExportPdfCommand = new RelayCommand(ExportPdf);
+            _dialogService = new DialogService();
+            _logger = new FileLogger();
+            
+            ExportPdfCommand = new AsyncRelayCommand(ExportPdfAsync, () => !IsExporting);
             SelectImageCommand = new RelayCommand(SelectImage);
             ResetCommand = new RelayCommand(ResetForm);
             TogglePreviewCommand = new RelayCommand(TogglePreview);
-            ZoomInPreviewCommand = new RelayCommand(() => PreviewZoom += BaseZoom * 0.5); // 每次增加50%（相对于基准）
-            ZoomOutPreviewCommand = new RelayCommand(() => PreviewZoom -= BaseZoom * 0.5); // 每次减少50%（相对于基准）
-            ResetZoomPreviewCommand = new RelayCommand(() => PreviewZoom = BaseZoom); // 重置到基准值（100%）
+            ZoomInPreviewCommand = new RelayCommand(() => PreviewZoom += PreviewConstants.BaseZoom * 0.5); // 每次增加50%（相对于基准）
+            ZoomOutPreviewCommand = new RelayCommand(() => PreviewZoom -= PreviewConstants.BaseZoom * 0.5); // 每次减少50%（相对于基准）
+            ResetZoomPreviewCommand = new RelayCommand(() => PreviewZoom = PreviewConstants.BaseZoom); // 重置到基准值（100%）
 
             RemoveUterusNoduleCommand = new RelayCommand<MyometriumNodule?>(
                 nodule =>
@@ -160,32 +171,33 @@ namespace SURS.App.ViewModels
 
         private void TriggerPreviewUpdate()
         {
-            // 取消之前的更新任务
-            _previewUpdateCancellation?.Cancel();
-            _previewUpdateCancellation = new System.Threading.CancellationTokenSource();
-            var token = _previewUpdateCancellation.Token;
-
-            // 启动异步任务（0ms 时 Delay 立即返回，实现即时刷新）
-            System.Threading.Tasks.Task.Run(async () =>
-            {
-                try
-                {
-                    await System.Threading.Tasks.Task.Delay(PreviewUpdateDelayMs, token).ConfigureAwait(false);
-                    if (!token.IsCancellationRequested)
-                        await UpdatePreviewAsync(token);
-                }
-                catch (System.Threading.Tasks.TaskCanceledException)
-                {
-                    // 忽略取消
-                }
-                catch (Exception)
-                {
-                    // 忽略其他错误，确保不崩溃
-                }
-            });
+            // 立即请求预览更新，不做节流或取消
+            _previewUpdatePending = true;
+            _ = ExecutePreviewUpdateAsync();
         }
 
-        private async System.Threading.Tasks.Task UpdatePreviewAsync(System.Threading.CancellationToken token)
+        private async Task ExecutePreviewUpdateAsync()
+        {
+            if (!await _previewUpdateSemaphore.WaitAsync(0))
+            {
+                return;
+            }
+
+            try
+            {
+                while (_previewUpdatePending)
+                {
+                    _previewUpdatePending = false;
+                    await UpdatePreviewAsync();
+                }
+            }
+            finally
+            {
+                _previewUpdateSemaphore.Release();
+            }
+        }
+
+        private async Task UpdatePreviewAsync()
         {
             try
             {
@@ -194,55 +206,59 @@ namespace SURS.App.ViewModels
                 // 在后台线程生成预览
                 var imageBytes = await System.Threading.Tasks.Task.Run(() => 
                 {
-                    if (token.IsCancellationRequested) return null;
-                    return _pdfService.GeneratePreviewImage(Report);
-                }, token);
-
-                if (token.IsCancellationRequested) return;
+                    return _pdfService.GeneratePreviewImage(Report, PreviewConstants.PreviewDpi);
+                });
 
                 if (imageBytes != null && imageBytes.Length > 0)
                 {
                     // 在UI线程更新图片
-                    Application.Current.Dispatcher.Invoke(() =>
-                    {
-                        if (token.IsCancellationRequested) return;
-                        
-                        var bitmap = new BitmapImage();
-                        bitmap.BeginInit();
-                        bitmap.StreamSource = new MemoryStream(imageBytes);
-                        bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                        bitmap.EndInit();
-                        bitmap.Freeze(); 
-                        
-                        PreviewImage = bitmap;
-                    });
+                    UpdatePreviewImage(imageBytes);
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // 静默失败，不输出调试信息
+                _logger.LogError("预览更新失败", ex);
             }
             finally
             {
-                // 只有当任务未被取消时，才重置IsUpdatingPreview
-                // 如果任务被取消，新的任务会接管IsUpdatingPreview的状态
-                if (!token.IsCancellationRequested)
-                {
-                    Application.Current.Dispatcher.Invoke(() => IsUpdatingPreview = false);
-                }
+                Application.Current.Dispatcher.Invoke(() => IsUpdatingPreview = false);
             }
+        }
+
+        /// <summary>
+        /// 更新预览图片
+        /// </summary>
+        private void UpdatePreviewImage(byte[] imageBytes)
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                // 释放旧图片资源
+                var oldImage = PreviewImage;
+                PreviewImage = null;
+                oldImage?.StreamSource?.Dispose();
+                
+                // 创建新图片
+                var bitmap = new BitmapImage();
+                bitmap.BeginInit();
+                bitmap.StreamSource = new MemoryStream(imageBytes);
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.EndInit();
+                bitmap.Freeze(); 
+                
+                PreviewImage = bitmap;
+            });
         }
 
         private void SubscribeToNestedObjects(SursReport report)
         {
             // 订阅所有嵌套对象的属性变化
             if (report.Uterus != null)
-                report.Uterus.PropertyChanged += (s, e) => TriggerPreviewUpdate();
+                _subscriptionManager.SubscribePropertyChanged(report.Uterus, (s, e) => TriggerPreviewUpdate());
 
             if (report.Uterus != null)
             {
                 // 监听子宫结节集合变化
-                report.Uterus.Nodules.CollectionChanged += (s, e) =>
+                _subscriptionManager.SubscribeCollectionChanged(report.Uterus.Nodules, (s, e) =>
                 {
                     TriggerPreviewUpdate();
                     RemoveUterusNoduleCommand?.NotifyCanExecuteChanged();
@@ -251,56 +267,56 @@ namespace SURS.App.ViewModels
                     {
                         foreach (MyometriumNodule n in e.NewItems)
                         {
-                            n.PropertyChanged += (s2, e2) => TriggerPreviewUpdate();
+                            _subscriptionManager.SubscribePropertyChanged(n, (s2, e2) => TriggerPreviewUpdate());
                         }
                     }
-                };
+                });
 
                 // 监听现有结节的属性变化
                 foreach (var n in report.Uterus.Nodules)
                 {
-                    n.PropertyChanged += (s, e) => TriggerPreviewUpdate();
+                    _subscriptionManager.SubscribePropertyChanged(n, (s, e) => TriggerPreviewUpdate());
                 }
             }
             
             if (report.Endometrium != null)
-                report.Endometrium.PropertyChanged += (s, e) => TriggerPreviewUpdate();
+                _subscriptionManager.SubscribePropertyChanged(report.Endometrium, (s, e) => TriggerPreviewUpdate());
             
             if (report.Cavity != null)
-                report.Cavity.PropertyChanged += (s, e) => TriggerPreviewUpdate();
+                _subscriptionManager.SubscribePropertyChanged(report.Cavity, (s, e) => TriggerPreviewUpdate());
 
             // 卵巢/附件：四个部位分别监听（左卵巢/右卵巢/左附件/右附件）
             void SubscribeRegion(AdnexaRegion region)
             {
-                region.PropertyChanged += (s, e) =>
+                _subscriptionManager.SubscribePropertyChanged(region, (s, e) =>
                 {
                     TriggerPreviewUpdate();
                     // 当区域属性变化时，重新计算O-RADS分级
                     TriggerAutoORadsCalculation(report);
-                };
-                region.UnilocularCyst.PropertyChanged += (s, e) =>
+                });
+                _subscriptionManager.SubscribePropertyChanged(region.UnilocularCyst, (s, e) =>
                 {
                     TriggerPreviewUpdate();
                     TriggerAutoORadsCalculation(report);
-                };
-                region.MultilocularCyst.PropertyChanged += (s, e) =>
+                });
+                _subscriptionManager.SubscribePropertyChanged(region.MultilocularCyst, (s, e) =>
                 {
                     TriggerPreviewUpdate();
                     TriggerAutoORadsCalculation(report);
-                };
-                region.SolidCyst.PropertyChanged += (s, e) =>
+                });
+                _subscriptionManager.SubscribePropertyChanged(region.SolidCyst, (s, e) =>
                 {
                     TriggerPreviewUpdate();
                     TriggerAutoORadsCalculation(report);
-                };
-                region.SolidMass.PropertyChanged += (s, e) =>
+                });
+                _subscriptionManager.SubscribePropertyChanged(region.SolidMass, (s, e) =>
                 {
                     TriggerPreviewUpdate();
                     TriggerAutoORadsCalculation(report);
-                };
+                });
             }
 
-            report.AdnexaRegions.CollectionChanged += (s, e) =>
+            _subscriptionManager.SubscribeCollectionChanged(report.AdnexaRegions, (s, e) =>
             {
                 TriggerPreviewUpdate();
                 if (e.NewItems != null)
@@ -310,14 +326,14 @@ namespace SURS.App.ViewModels
                 }
                 // 当集合变化时，重新计算O-RADS分级
                 TriggerAutoORadsCalculation(report);
-            };
+            });
 
             foreach (var r in report.AdnexaRegions)
                 SubscribeRegion(r);
             
             // 监听集合变化
-            report.ImagePaths.CollectionChanged += (s, e) => TriggerPreviewUpdate();
-            report.FluidLocations.CollectionChanged += (s, e) => 
+            _subscriptionManager.SubscribeCollectionChanged(report.ImagePaths, (s, e) => TriggerPreviewUpdate());
+            _subscriptionManager.SubscribeCollectionChanged(report.FluidLocations, (s, e) => 
             {
                 TriggerPreviewUpdate();
                 // 当集合变化时，重新订阅新添加项的属性变化
@@ -325,42 +341,24 @@ namespace SURS.App.ViewModels
                 {
                     foreach (FluidLocation fluid in e.NewItems)
                     {
-                        fluid.PropertyChanged += (s2, e2) => TriggerPreviewUpdate();
+                        _subscriptionManager.SubscribePropertyChanged(fluid, (s2, e2) => TriggerPreviewUpdate());
                     }
                 }
-            };
+            });
             
             // 监听现有FluidLocation对象的属性变化
             foreach (var fluid in report.FluidLocations)
             {
-                fluid.PropertyChanged += (s, e) =>
+                _subscriptionManager.SubscribePropertyChanged(fluid, (s, e) =>
                 {
                     TriggerPreviewUpdate();
                     // 积液状态变化时，重新计算O-RADS分级
                     TriggerAutoORadsCalculation(report);
-                };
+                });
             }
 
-            // 监听HasFluid和UseAutoORads属性变化
-            report.PropertyChanged += (s, e) =>
-            {
-                if (e.PropertyName == nameof(report.HasFluid) || e.PropertyName == nameof(report.HasNoFluid))
-                {
-                    TriggerAutoORadsCalculation(report);
-                }
-                else if (e.PropertyName == nameof(report.UseAutoORads))
-                {
-                    if (report.UseAutoORads)
-                    {
-                        report.CalculateAutoORads();
-                        // 如果启用自动分级，更新手动选择的ORadsLevel
-                        if (report.AutoORadsResult != null)
-                        {
-                            report.ORadsLevel = report.AutoORadsResult.LevelString;
-                        }
-                    }
-                }
-            };
+            // 监听HasFluid和UseAutoORads属性变化（注意：Report 的 PropertyChanged 已在 Report setter 中订阅）
+            // 这里不需要重复订阅，因为 Report_PropertyChanged 已经处理了所有属性变化
 
             // 初始化时计算一次O-RADS分级
             TriggerAutoORadsCalculation(report);
@@ -402,21 +400,28 @@ namespace SURS.App.ViewModels
 
         private void SelectImage()
         {
-            var dialog = new OpenFileDialog
+            try
             {
-                Filter = "Image Files (*.jpg;*.jpeg;*.png;*.bmp)|*.jpg;*.jpeg;*.png;*.bmp",
-                Multiselect = true
-            };
+                var filePaths = _dialogService.ShowOpenFileDialogMultiple(
+                    "Image Files (*.jpg;*.jpeg;*.png;*.bmp)|*.jpg;*.jpeg;*.png;*.bmp"
+                );
 
-            if (dialog.ShowDialog() == true)
-            {
-                foreach (var file in dialog.FileNames)
+                if (filePaths != null)
                 {
-                    if (Report.ImagePaths.Count < 3)
+                    foreach (var filePath in filePaths)
                     {
-                        Report.ImagePaths.Add(file);
+                        if (Report.ImagePaths.Count < 3)
+                        {
+                            Report.ImagePaths.Add(filePath);
+                            _logger.LogInfo($"已选择图片: {filePath}");
+                        }
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("选择图片失败", ex);
+                _dialogService.ShowError("错误", "选择图片时发生错误");
             }
         }
 
@@ -425,19 +430,64 @@ namespace SURS.App.ViewModels
             IsPreviewVisible = !IsPreviewVisible;
         }
 
-        private void ExportPdf()
+        private async Task ExportPdfAsync()
         {
-            var dialog = new SaveFileDialog
+            try
             {
-                Filter = "PDF Files (*.pdf)|*.pdf",
-                DefaultExt = "pdf",
-                FileName = $"SURS_Report_{DateTime.Now:yyyyMMddHHmm}.pdf"
-            };
+                var filePath = _dialogService.ShowSaveFileDialog(
+                    "PDF Files (*.pdf)|*.pdf",
+                    "pdf",
+                    $"SURS_Report_{DateTime.Now:yyyyMMddHHmm}.pdf"
+                );
 
-            if (dialog.ShowDialog() == true)
+                if (string.IsNullOrEmpty(filePath))
+                    return;
+
+                IsExporting = true;
+                ExportPdfCommand.NotifyCanExecuteChanged();
+                _logger.LogInfo($"开始导出 PDF: {filePath}");
+
+                // 在后台线程生成 PDF，不阻塞 UI
+                await Task.Run(() => _pdfService.GeneratePdf(Report, filePath));
+
+                _logger.LogInfo($"PDF 导出成功: {filePath}");
+                _dialogService.ShowMessage("导出成功", "PDF 报告已生成");
+            }
+            catch (Exception ex)
             {
-                _pdfService.GeneratePdf(Report, dialog.FileName);
-                MessageBox.Show("PDF 导出成功!", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                _logger.LogError("导出 PDF 失败", ex);
+                _dialogService.ShowError("导出失败", $"导出 PDF 时发生错误：{ex.Message}");
+            }
+            finally
+            {
+                IsExporting = false;
+                ExportPdfCommand.NotifyCanExecuteChanged();
+            }
+        }
+
+        /// <summary>
+        /// 释放资源
+        /// </summary>
+        public void Dispose()
+        {
+            try
+            {
+                // 清理事件订阅
+                _subscriptionManager?.Dispose();
+                
+                // 清理预览更新相关资源
+                _previewUpdateSemaphore?.Dispose();
+                
+                // 清理图片资源
+                var oldImage = PreviewImage;
+                PreviewImage = null;
+                oldImage?.StreamSource?.Dispose();
+                
+                _logger?.LogDebug("MainViewModel 资源已释放");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError("释放资源时发生错误", ex);
             }
         }
     }

@@ -1,0 +1,357 @@
+<UserControl x:Class="SURS.App.Controls.EndometriumSection"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:converters="clr-namespace:SURS.App.Converters"
+             xmlns:helpers="clr-namespace:SURS.App.Helpers">
+    <Expander Style="{StaticResource CollapsibleCard}" Visibility="{Binding Report.IncludeEndometrium, Converter={StaticResource BoolToVis}}">
+        <Expander.Header>
+            <StackPanel Orientation="Horizontal">
+                <Border Width="4" Height="24" Background="White" CornerRadius="2" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                <TextBlock Text="子宫内膜部分" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Expander.Header>
+        <StackPanel>
+            <Border Background="#F0F7FF" CornerRadius="8" Padding="16,12" Margin="0,0,0,20">
+                <TextBlock Text="子宫内膜" FontWeight="SemiBold" FontSize="16" Foreground="{StaticResource Brush.Primary}"/>
+            </Border>
+
+            <Grid Margin="0,0,0,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="内膜厚度：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                <StackPanel Orientation="Horizontal" Grid.Column="1">
+                    <TextBox helpers:TextBoxHelpers.IsNumeric="True" helpers:TextBoxHelpers.PlaceholderText="厚度" Text="{Binding Report.Endometrium.Thickness, UpdateSourceTrigger=PropertyChanged, Converter={StaticResource DoubleToStringConverter}}" Width="60">
+                        <TextBox.Style>
+                            <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Report.Endometrium.CannotMeasure}" Value="True">
+                                        <Setter Property="IsEnabled" Value="False"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBox.Style>
+                    </TextBox>
+                    <TextBlock Text="cm" Style="{StaticResource Text.Unit}" Margin="4,0,12,0"/>
+                    <CheckBox Content="单层" IsChecked="{Binding Report.Endometrium.IsSingleLayer}" Margin="0,0,12,0"/>
+                    <TextBlock Text="|" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                    <CheckBox Content="无法测量" IsChecked="{Binding Report.Endometrium.CannotMeasure}" Margin="0"/>
+                </StackPanel>
+            </Grid>
+            <TextBlock FontSize="11" Foreground="{StaticResource Brush.TextSecondary}" FontStyle="Italic" Margin="0,0,0,20" TextWrapping="Wrap">
+                <Run Text="【注：如果存在宫腔积液，应分别测量子宫前后壁单层的内膜厚度并相加；存在宫腔病变时，应记录包含病变在内的子宫内膜总厚度；但病变为黏膜下肌瘤时，测量内膜厚度不应包括黏膜下肌瘤；如果内膜与肌层分界面不清楚，应描述为"/>
+                <Run Text="&quot;无法测量&quot;"/>
+                <Run Text="】"/>
+            </TextBlock>
+
+            <Grid Margin="0,0,0,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="内膜回声：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <WrapPanel VerticalAlignment="Center">
+                        <RadioButton GroupName="EndoEcho" Content="低回声" IsChecked="{Binding Report.Endometrium.EchoType, Converter={StaticResource RadioBoolConverter}, ConverterParameter=低回声}"/>
+                        <RadioButton GroupName="EndoEcho" Content="等回声" IsChecked="{Binding Report.Endometrium.EchoType, Converter={StaticResource RadioBoolConverter}, ConverterParameter=等回声}"/>
+                        <RadioButton GroupName="EndoEcho" Content="高回声" IsChecked="{Binding Report.Endometrium.EchoType, Converter={StaticResource RadioBoolConverter}, ConverterParameter=高回声}"/>
+                    </WrapPanel>
+                </StackPanel>
+            </Grid>
+
+            <TextBlock Text="回声是否均匀（单选）：" Style="{StaticResource Text.Label}" Margin="0,0,0,8"/>
+            <StackPanel Margin="0,0,0,20">
+                <WrapPanel Margin="0,0,0,8">
+                    <RadioButton GroupName="EndoUniformity" Content="均匀" IsChecked="{Binding Report.Endometrium.EchoUniform}" Margin="0,0,16,0"/>
+                    <RadioButton GroupName="EndoUniformity" Content="不均匀" IsChecked="{Binding Report.Endometrium.EchoNonUniform}" x:Name="RbEndoNonUniform" Margin="0,0,16,0"/>
+                </WrapPanel>
+                <StackPanel Margin="24,8,0,0" Visibility="{Binding IsChecked, ElementName=RbEndoNonUniform, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Text="不均匀类型（可多选）：" Style="{StaticResource Text.LabelSecondary}" Margin="0,0,0,8"/>
+                    <WrapPanel>
+                        <CheckBox Content="未见囊样结构" IsChecked="{Binding Report.Endometrium.NonUniformNoCyst}" Margin="0,0,16,0"/>
+                        <CheckBox Content="可见形态规则的囊样结构" IsChecked="{Binding Report.Endometrium.NonUniformRegularCyst}" Margin="0,0,16,0"/>
+                        <CheckBox Content="可见不规则的囊样结构" IsChecked="{Binding Report.Endometrium.NonUniformIrregularCyst}" Margin="0,0,16,0"/>
+                    </WrapPanel>
+                </StackPanel>
+            </StackPanel>
+
+            <Grid Margin="0,0,0,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="子宫内膜中线：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                <StackPanel Grid.Column="1">
+                    <RadioButton GroupName="EndoMid" Content="线性（内膜线平滑、呈线状）" IsChecked="{Binding Report.Endometrium.Midline, Converter={StaticResource RadioBoolConverter}, ConverterParameter=线性}"/>
+                    <RadioButton GroupName="EndoMid" Content="非线性（内膜线不平滑、呈波状）" IsChecked="{Binding Report.Endometrium.Midline, Converter={StaticResource RadioBoolConverter}, ConverterParameter=非线性}"/>
+                    <RadioButton GroupName="EndoMid" Content="不规则（内膜线回声中断）" IsChecked="{Binding Report.Endometrium.Midline, Converter={StaticResource RadioBoolConverter}, ConverterParameter=不规则}"/>
+                    <RadioButton GroupName="EndoMid" Content="未显示（内膜线显示不清）" IsChecked="{Binding Report.Endometrium.Midline, Converter={StaticResource RadioBoolConverter}, ConverterParameter=未显示}"/>
+                </StackPanel>
+            </Grid>
+
+            <Grid Margin="0,0,0,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="子宫结合带" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                <WrapPanel Grid.Column="1">
+                    <RadioButton GroupName="EndoJZ" Content="规则" IsChecked="{Binding Report.Endometrium.JunctionalZone, Converter={StaticResource RadioBoolConverter}, ConverterParameter=规则}"/>
+                    <RadioButton GroupName="EndoJZ" Content="不规则" IsChecked="{Binding Report.Endometrium.JunctionalZone, Converter={StaticResource RadioBoolConverter}, ConverterParameter=不规则}"/>
+                    <RadioButton GroupName="EndoJZ" Content="中断" IsChecked="{Binding Report.Endometrium.JunctionalZone, Converter={StaticResource RadioBoolConverter}, ConverterParameter=中断}"/>
+                    <RadioButton GroupName="EndoJZ" Content="未显示" IsChecked="{Binding Report.Endometrium.JunctionalZone, Converter={StaticResource RadioBoolConverter}, ConverterParameter=未显示}"/>
+                </WrapPanel>
+            </Grid>
+
+            <!-- 子宫内膜 CDFI (血流) -->
+            <Border Background="#F0F7FF" CornerRadius="8" Padding="16,12" Margin="0,20,0,20">
+                <TextBlock Text="子宫内膜 CDFI (血流)" FontWeight="SemiBold" FontSize="16" Foreground="{StaticResource Brush.Primary}"/>
+            </Border>
+
+            <Grid Margin="0,0,0,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="血流信号：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                <StackPanel Orientation="Horizontal" Grid.Column="1">
+                    <CheckBox Content="测量" IsChecked="{Binding Report.Endometrium.ShouldMeasureFlow}" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                    <StackPanel Orientation="Horizontal" IsEnabled="{Binding Report.Endometrium.ShouldMeasureFlow}">
+                        <RadioButton GroupName="EndoFlow" Content="无血流信号" IsChecked="{Binding Report.Endometrium.HasNoFlow}"/>
+                        <RadioButton GroupName="EndoFlow" Content="有血流信号" IsChecked="{Binding Report.Endometrium.HasFlow}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+
+            <StackPanel Visibility="{Binding Report.Endometrium.HasFlow, Converter={StaticResource BoolToVis}}" IsEnabled="{Binding Report.Endometrium.ShouldMeasureFlow}" Margin="0,0,0,20">
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="血流丰富程度：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                    <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                        <RadioButton GroupName="EndoFlowAmt" Content="少量" IsChecked="{Binding Report.Endometrium.FlowAmount, Converter={StaticResource RadioBoolConverter}, ConverterParameter=少量}"/>
+                        <RadioButton GroupName="EndoFlowAmt" Content="中量" IsChecked="{Binding Report.Endometrium.FlowAmount, Converter={StaticResource RadioBoolConverter}, ConverterParameter=中量}"/>
+                        <RadioButton GroupName="EndoFlowAmt" Content="大量" IsChecked="{Binding Report.Endometrium.FlowAmount, Converter={StaticResource RadioBoolConverter}, ConverterParameter=大量}"/>
+                    </WrapPanel>
+                </Grid>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="血流模式：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                    <StackPanel Grid.Column="1">
+                        <RadioButton GroupName="EndoFlowPattern" Content="没有分支的单条穿入血流信号" IsChecked="{Binding Report.Endometrium.FlowPattern, Converter={StaticResource RadioBoolConverter}, ConverterParameter=没有分支的单条穿入血流信号}"/>
+                        <RadioButton GroupName="EndoFlowPattern" Content="有分支的单条穿入血流信号" IsChecked="{Binding Report.Endometrium.FlowPattern, Converter={StaticResource RadioBoolConverter}, ConverterParameter=有分支的单条穿入血流信号}"/>
+                        <RadioButton GroupName="EndoFlowPattern">
+                            <RadioButton.Content>
+                                <TextBlock>
+                                    <Run Text="具有"/>
+                                    <Run Text="&quot;共同起源&quot;"/>
+                                    <Run Text="的多条血流信号"/>
+                                </TextBlock>
+                            </RadioButton.Content>
+                            <RadioButton.IsChecked>
+                                <Binding Path="Report.Endometrium.FlowPattern">
+                                    <Binding.Converter>
+                                        <converters:RadioBoolConverter/>
+                                    </Binding.Converter>
+                                    <Binding.ConverterParameter>具有共同起源的多条血流信号</Binding.ConverterParameter>
+                                </Binding>
+                            </RadioButton.IsChecked>
+                        </RadioButton>
+                        <RadioButton GroupName="EndoFlowPattern">
+                            <RadioButton.Content>
+                                <TextBlock>
+                                    <Run Text="&quot;多个起源&quot;"/>
+                                    <Run Text="在子宫肌层-子宫内膜连接处的血流信号"/>
+                                </TextBlock>
+                            </RadioButton.Content>
+                            <RadioButton.IsChecked>
+                                <Binding Path="Report.Endometrium.FlowPattern">
+                                    <Binding.Converter>
+                                        <converters:RadioBoolConverter/>
+                                    </Binding.Converter>
+                                    <Binding.ConverterParameter>多个起源在子宫肌层-子宫内膜连接处的血流信号</Binding.ConverterParameter>
+                                </Binding>
+                            </RadioButton.IsChecked>
+                        </RadioButton>
+                        <RadioButton GroupName="EndoFlowPattern" Content="散在的血流信号" IsChecked="{Binding Report.Endometrium.FlowPattern, Converter={StaticResource RadioBoolConverter}, ConverterParameter=散在的血流信号}"/>
+                        <RadioButton GroupName="EndoFlowPattern" Content="环状血流信号" IsChecked="{Binding Report.Endometrium.FlowPattern, Converter={StaticResource RadioBoolConverter}, ConverterParameter=环状血流信号}"/>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+
+            <!-- 宫腔占位性病变（属于子宫内膜部分） -->
+            <Border Background="#F0F7FF" CornerRadius="8" Padding="16,12" Margin="0,20,0,20">
+                <TextBlock Text="宫腔占位性病变" FontWeight="SemiBold" FontSize="16" Foreground="{StaticResource Brush.Primary}"/>
+            </Border>
+
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                <TextBlock Text="占位性病变：" Style="{StaticResource Text.Label}" Margin="0,0,16,0"/>
+                <RadioButton GroupName="CavityMass" Content="无" IsChecked="{Binding Report.Cavity.HasLesion, Converter={StaticResource RadioBoolConverter}, ConverterParameter=False}"/>
+                <RadioButton GroupName="CavityMass" Content="有" IsChecked="{Binding Report.Cavity.HasLesion, Converter={StaticResource RadioBoolConverter}, ConverterParameter=True}"/>
+            </StackPanel>
+
+            <StackPanel Visibility="{Binding Report.Cavity.HasLesion, Converter={StaticResource BoolToVis}}">
+                <Border BorderBrush="{StaticResource Brush.BorderLight}" BorderThickness="1.5" CornerRadius="10" Padding="24" Background="#F8F9FA" Margin="0,0,0,0">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="病变大小：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                            <StackPanel Orientation="Horizontal" Grid.Column="1">
+                                <TextBox helpers:TextBoxHelpers.IsNumeric="True" helpers:TextBoxHelpers.PlaceholderText="长径" Text="{Binding Report.Cavity.Length, UpdateSourceTrigger=PropertyChanged, Converter={StaticResource DoubleToStringConverter}}" Width="48"/>
+                                <TextBlock Text="×" Margin="4,0"/>
+                                <TextBox helpers:TextBoxHelpers.IsNumeric="True" helpers:TextBoxHelpers.PlaceholderText="前后径" Text="{Binding Report.Cavity.APDiameter, UpdateSourceTrigger=PropertyChanged, Converter={StaticResource DoubleToStringConverter}}" Width="48"/>
+                                <TextBlock Text="×" Margin="4,0"/>
+                                <TextBox helpers:TextBoxHelpers.IsNumeric="True" helpers:TextBoxHelpers.PlaceholderText="横径" Text="{Binding Report.Cavity.Width, UpdateSourceTrigger=PropertyChanged, Converter={StaticResource DoubleToStringConverter}}" Width="48"/>
+                                <TextBlock Text="cm" Style="{StaticResource Text.Unit}" Margin="4,0,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="病变位置（可选）：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                            <TextBox Text="{Binding Report.Cavity.Location, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1"/>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="是否带蒂：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                            <StackPanel Grid.Column="1">
+                                <WrapPanel>
+                                    <RadioButton GroupName="CavityPed" Content="无蒂" IsChecked="{Binding Report.Cavity.IsPedunculated, Converter={StaticResource RadioBoolConverter}, ConverterParameter=False}"/>
+                                    <RadioButton GroupName="CavityPed" Content="带蒂" IsChecked="{Binding Report.Cavity.IsPedunculated, Converter={StaticResource RadioBoolConverter}, ConverterParameter=True}"/>
+                                </WrapPanel>
+                                <TextBlock FontSize="11" Foreground="{StaticResource Brush.TextSecondary}" FontStyle="Italic" Margin="0,8,0,0" TextWrapping="Wrap">
+                                    <Run Text="【带蒂定义：子宫内膜水平的基部直径 (a) 与病变的最大横径 (b) 之间的比率，如果 a / b 比率＜1，则定义为"/>
+                                    <Run Text="&quot;带蒂&quot;"/>
+                                    <Run Text="，如果为 1 或更大则定义为"/>
+                                    <Run Text="&quot;无蒂&quot;"/>
+                                    <Run Text="】"/>
+                                </TextBlock>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="病变回声类型：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                            <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                                <RadioButton GroupName="CavityEcho" Content="低回声" IsChecked="{Binding Report.Cavity.EchoType, Converter={StaticResource RadioBoolConverter}, ConverterParameter=低回声}"/>
+                                <RadioButton GroupName="CavityEcho" Content="等回声" IsChecked="{Binding Report.Cavity.EchoType, Converter={StaticResource RadioBoolConverter}, ConverterParameter=等回声}"/>
+                                <RadioButton GroupName="CavityEcho" Content="高回声" IsChecked="{Binding Report.Cavity.EchoType, Converter={StaticResource RadioBoolConverter}, ConverterParameter=高回声}"/>
+                            </WrapPanel>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="病变回声均匀与否：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                            <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                                <RadioButton GroupName="CavityUni" Content="均匀" IsChecked="{Binding Report.Cavity.EchoUniformity, Converter={StaticResource RadioBoolConverter}, ConverterParameter=均匀}"/>
+                                <RadioButton GroupName="CavityUni" Content="不均匀" IsChecked="{Binding Report.Cavity.EchoUniformity, Converter={StaticResource RadioBoolConverter}, ConverterParameter=不均匀}"/>
+                            </WrapPanel>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="病变的边界：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                            <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                                <RadioButton GroupName="CavityBound" Content="规则" IsChecked="{Binding Report.Cavity.Boundary, Converter={StaticResource RadioBoolConverter}, ConverterParameter=规则}"/>
+                                <RadioButton GroupName="CavityBound" Content="不规则" IsChecked="{Binding Report.Cavity.Boundary, Converter={StaticResource RadioBoolConverter}, ConverterParameter=不规则}"/>
+                            </WrapPanel>
+                        </Grid>
+
+                        <TextBlock Text="病变的 CDFI：" Style="{StaticResource Text.Label}" Margin="0,0,0,8"/>
+                        <StackPanel Margin="0,0,0,12">
+                            <WrapPanel>
+                                <RadioButton GroupName="CavityFlow" Content="无血流信号" IsChecked="{Binding Report.Cavity.HasNoFlow}"/>
+                                <RadioButton GroupName="CavityFlow" Content="有血流信号" IsChecked="{Binding Report.Cavity.HasFlow}"/>
+                            </WrapPanel>
+                            <StackPanel Visibility="{Binding Report.Cavity.HasFlow, Converter={StaticResource BoolToVis}}" Margin="20,8,0,0">
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="血流丰富程度：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                                    <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <RadioButton GroupName="CavityFlowAmt" Content="少量" IsChecked="{Binding Report.Cavity.FlowAmount, Converter={StaticResource RadioBoolConverter}, ConverterParameter=少量}"/>
+                                        <RadioButton GroupName="CavityFlowAmt" Content="中量" IsChecked="{Binding Report.Cavity.FlowAmount, Converter={StaticResource RadioBoolConverter}, ConverterParameter=中量}"/>
+                                        <RadioButton GroupName="CavityFlowAmt" Content="大量" IsChecked="{Binding Report.Cavity.FlowAmount, Converter={StaticResource RadioBoolConverter}, ConverterParameter=大量}"/>
+                                    </WrapPanel>
+                                </Grid>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="血流模式：" Style="{StaticResource Text.Label}" Grid.Column="0"/>
+                                    <StackPanel Grid.Column="1">
+                                        <RadioButton GroupName="CavityFlowPattern" Content="没有分支的单条穿入血流信号" IsChecked="{Binding Report.Cavity.FlowPattern, Converter={StaticResource RadioBoolConverter}, ConverterParameter=没有分支的单条穿入血流信号}"/>
+                                        <RadioButton GroupName="CavityFlowPattern" Content="有分支的单条穿入血流信号" IsChecked="{Binding Report.Cavity.FlowPattern, Converter={StaticResource RadioBoolConverter}, ConverterParameter=有分支的单条穿入血流信号}"/>
+                                        <RadioButton GroupName="CavityFlowPattern">
+                                            <RadioButton.Content>
+                                                <TextBlock>
+                                                    <Run Text="具有"/>
+                                                    <Run Text="&quot;共同起源&quot;"/>
+                                                    <Run Text="的多条血流信号"/>
+                                                </TextBlock>
+                                            </RadioButton.Content>
+                                            <RadioButton.IsChecked>
+                                                <Binding Path="Report.Cavity.FlowPattern">
+                                                    <Binding.Converter>
+                                                        <converters:RadioBoolConverter/>
+                                                    </Binding.Converter>
+                                                    <Binding.ConverterParameter>具有共同起源的多条血流信号</Binding.ConverterParameter>
+                                                </Binding>
+                                            </RadioButton.IsChecked>
+                                        </RadioButton>
+                                        <RadioButton GroupName="CavityFlowPattern">
+                                            <RadioButton.Content>
+                                                <TextBlock>
+                                                    <Run Text="&quot;多个起源&quot;"/>
+                                                    <Run Text="在子宫肌层-子宫内膜连接处的血流信号"/>
+                                                </TextBlock>
+                                            </RadioButton.Content>
+                                            <RadioButton.IsChecked>
+                                                <Binding Path="Report.Cavity.FlowPattern">
+                                                    <Binding.Converter>
+                                                        <converters:RadioBoolConverter/>
+                                                    </Binding.Converter>
+                                                    <Binding.ConverterParameter>多个起源在子宫肌层-子宫内膜连接处的血流信号</Binding.ConverterParameter>
+                                                </Binding>
+                                            </RadioButton.IsChecked>
+                                        </RadioButton>
+                                        <RadioButton GroupName="CavityFlowPattern" Content="散在的血流信号" IsChecked="{Binding Report.Cavity.FlowPattern, Converter={StaticResource RadioBoolConverter}, ConverterParameter=散在的血流信号}"/>
+                                        <RadioButton GroupName="CavityFlowPattern" Content="环状血流信号" IsChecked="{Binding Report.Cavity.FlowPattern, Converter={StaticResource RadioBoolConverter}, ConverterParameter=环状血流信号}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </StackPanel>
+    </Expander>
+</UserControl>
+

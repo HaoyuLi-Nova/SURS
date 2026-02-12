@@ -971,6 +971,7 @@ namespace SURS.App.Models
 
     public class Endometrium : ObservableObject
     {
+        private bool _isUpdatingUniformity;
         private double _thickness;
         public double Thickness 
         { 
@@ -1012,6 +1013,30 @@ namespace SURS.App.Models
             set => SetProperty(ref _echoType, value);
         }
 
+        private string _echoUniformity = string.Empty;
+        public string EchoUniformity
+        {
+            get => _echoUniformity;
+            set
+            {
+                if (SetProperty(ref _echoUniformity, value))
+                {
+                    if (_isUpdatingUniformity) return;
+
+                    _isUpdatingUniformity = true;
+                    EchoUniform = value == "均匀";
+                    EchoNonUniform = value == "不均匀";
+                    if (value != "不均匀")
+                    {
+                        NonUniformNoCyst = false;
+                        NonUniformRegularCyst = false;
+                        NonUniformIrregularCyst = false;
+                    }
+                    _isUpdatingUniformity = false;
+                }
+            }
+        }
+
         private bool _echoUniform;
         public bool EchoUniform 
         { 
@@ -1020,10 +1045,22 @@ namespace SURS.App.Models
             {
                 if (SetProperty(ref _echoUniform, value) && value)
                 {
+                    if (!_isUpdatingUniformity)
+                    {
+                        _isUpdatingUniformity = true;
+                        EchoUniformity = "均匀";
+                        _isUpdatingUniformity = false;
+                    }
                     if (EchoNonUniform) EchoNonUniform = false;
                     NonUniformNoCyst = false;
                     NonUniformRegularCyst = false;
                     NonUniformIrregularCyst = false;
+                }
+                else if (!value && !_isUpdatingUniformity && EchoUniformity == "均匀")
+                {
+                    _isUpdatingUniformity = true;
+                    EchoUniformity = string.Empty;
+                    _isUpdatingUniformity = false;
                 }
             }
         }
@@ -1039,12 +1076,24 @@ namespace SURS.App.Models
                     if (value)
                     {
                         if (EchoUniform) EchoUniform = false;
+                        if (!_isUpdatingUniformity)
+                        {
+                            _isUpdatingUniformity = true;
+                            EchoUniformity = "不均匀";
+                            _isUpdatingUniformity = false;
+                        }
                     }
                     else
                     {
                         NonUniformNoCyst = false;
                         NonUniformRegularCyst = false;
                         NonUniformIrregularCyst = false;
+                        if (!_isUpdatingUniformity && EchoUniformity == "不均匀")
+                        {
+                            _isUpdatingUniformity = true;
+                            EchoUniformity = string.Empty;
+                            _isUpdatingUniformity = false;
+                        }
                     }
                 }
             }
@@ -1319,28 +1368,46 @@ namespace SURS.App.Models
         public AdnexaRegion(string name)
         {
             Name = name;
-            // 默认选“正常”，避免一打开就是空状态
-            Evaluation = "正常";
+            // 不设置默认值，允许不选择评价
+            Evaluation = string.Empty;
         }
 
         public string Name { get; }
 
-        private string _evaluation = "正常";
+        private string _evaluation = string.Empty;
         public string Evaluation
         {
             get => _evaluation;
-            set => SetProperty(ref _evaluation, value);
+            set
+            {
+                if (SetProperty(ref _evaluation, value))
+                {
+                    OnPropertyChanged(nameof(IsNormal));
+                    OnPropertyChanged(nameof(IsAbnormal));
+                    OnPropertyChanged(nameof(HasEvaluation));
+                }
+            }
         }
+
+        /// <summary>
+        /// 是否已选择评价（不为空）
+        /// </summary>
+        public bool HasEvaluation => !string.IsNullOrWhiteSpace(Evaluation);
 
         public bool IsNormal
         {
             get => Evaluation == "正常";
             set
             {
-                if (!value) return;
-                Evaluation = "正常";
-                OnPropertyChanged(nameof(IsNormal));
-                OnPropertyChanged(nameof(IsAbnormal));
+                if (value)
+                {
+                    Evaluation = "正常";
+                }
+                else if (IsNormal)
+                {
+                    // 取消选择时，清空评价
+                    Evaluation = string.Empty;
+                }
             }
         }
 
@@ -1349,10 +1416,15 @@ namespace SURS.App.Models
             get => Evaluation == "异常";
             set
             {
-                if (!value) return;
-                Evaluation = "异常";
-                OnPropertyChanged(nameof(IsNormal));
-                OnPropertyChanged(nameof(IsAbnormal));
+                if (value)
+                {
+                    Evaluation = "异常";
+                }
+                else if (IsAbnormal)
+                {
+                    // 取消选择时，清空评价
+                    Evaluation = string.Empty;
+                }
             }
         }
 
