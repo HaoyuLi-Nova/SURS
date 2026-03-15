@@ -64,3 +64,11 @@ SURS/
 
 本项目采用 MIT 许可证。
 
+
+
+## 导出流程
+cd d:\Myproject\SURS; dotnet publish SURS.App -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishReadyToRun=true -o Publish
+
+cd d:\Myproject\SURS\Publish; Get-ChildItem -File | Select-Object Name, Length, LastWriteTime | Format-Table -AutoSize
+
+位置：d:\Myproject\SURS\Publish\SURS.App.exe
