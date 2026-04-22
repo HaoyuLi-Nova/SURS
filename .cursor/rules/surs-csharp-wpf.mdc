@@ -1,0 +1,17 @@
+---
+description: SURS 的 C# / XAML / MVVM 与 PDF 相关约定
+globs: **/*.{cs,xaml}
+alwaysApply: false
+---
+
+# C# 与 WPF
+
+- **运行时**：.NET 9、WPF；可空引用与隐式 usings 已开启，新代码保持可空安全，避免用 `!` 掩盖可修的数据契约。
+- **MVVM**：ViewModel/Model 用 `CommunityToolkit.Mvvm` 的 `ObservableObject`、`RelayCommand` / `AsyncRelayCommand`，与 `MainViewModel` 等现有类一致，不另写手写 `INotifyPropertyChanged` 包装层（除非在边缘工具类中有充分理由）。
+- **XAML**：复杂交互优先通过命令与绑定到 ViewModel；`*.xaml.cs` 只保留与视图生命周期/控件强相关的薄逻辑。业务与校验放在 ViewModel/Model。
+- **转换器与资源**：值转换器放在 `Converters/`，在 XAML 中复用已有 `xmlns` 与资源字典模式，避免在多个窗口重复内联相同样式块。
+- **领域与 O-RADS**：O-RADS 相关计算/展示与 `ORadsCalculator`、`SursReport` 等现有类型对齐；新增等级或枚举时同步 UI 与 PDF 两处消费路径。
+
+# QuestPDF（`PdfService` 等）
+
+- 在生成入口设置 `QuestPDF.Settings.License`（与现有 `LicenseType.Community` 一致）；布局以 A4、中文可读字体（如现有 Microsoft YaHei / 标题 SimSun ）为准，**新增区块时保持与现版报告同级的边距、表格与表头结构**，避免另起一套版式。抽取重复表格/行时提取为局部方法，而不是复制整段 `Document.Create` 树。

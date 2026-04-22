@@ -1,0 +1,12 @@
+---
+description: SURS 项目范围、分层与协作方式（全局）
+alwaysApply: true
+---
+
+# SURS 项目规则
+
+- **产品**：基于 WPF 的超声结构化报告（O-RADS、QuestPDF 导出 PDF），面向临床录入与报告排版。
+- **主工程**：当前解决方案以 `SURS.App` 为主；同仓库中的 `SURS.Core` / `SURS.Infrastructure` 为预留或扩展，修改前先确认是否已被主工程引用，避免在未被引用的程序集中添加死代码。
+- **目录习惯**：`Models` / `ViewModels` / `Views` / `Controls` / `Services` / `Converters` / `Helpers` — 新代码优先落在与现有文件相同的职责划分下，不另起平行的第四套命名空间风格。
+- **与 Agent/子任务**：需要大范围、多轮检索或长日志隔离时，适合用子代理/并行任务；具体 C#/WPF 写法以本仓库及 `surs-csharp-wpf` 规则为准。单一、可重复的机械任务更适合用户侧 Skill，不必为此单独堆叠重复的项目规则。
+- **不重复原则**：本规则不赘述通用 C# 风格百科；只约束 **SURS 目录与产品语境**。用户规则中已要求中文回复，此处不重复长文式说明。
