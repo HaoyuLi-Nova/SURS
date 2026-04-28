@@ -17,7 +17,7 @@
                     </Grid.ColumnDefinitions>
                     
                     <StackPanel Grid.Column="0" Orientation="Horizontal">
-                        <TextBlock Text="📄 实时预览" Foreground="White" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
+                        <TextBlock Text="📄 报告与预览" Foreground="White" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
                         <TextBlock Text="{Binding IsUpdatingPreview, Converter={StaticResource BoolToVis}}" 
                                  Margin="12,0,0,0" 
                                  Foreground="White" 
@@ -93,52 +93,72 @@
                 </Grid>
             </Border>
 
-            <!-- Preview Content -->
-            <ScrollViewer x:Name="PreviewScrollViewer" 
-                         Grid.Row="1" 
-                         Style="{StaticResource ModernScrollViewer}"
-                         VerticalScrollBarVisibility="Auto" 
-                         HorizontalScrollBarVisibility="Auto" 
-                         Padding="30"
-                         PreviewMouseWheel="PreviewScrollViewer_PreviewMouseWheel"
-                         MouseLeftButtonDown="PreviewScrollViewer_MouseLeftButtonDown"
-                         MouseLeftButtonUp="PreviewScrollViewer_MouseLeftButtonUp"
-                         MouseMove="PreviewScrollViewer_MouseMove">
-                <Grid>
-                    <Border Background="White" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,10,0,30">
-                        <Border.Effect>
-                            <DropShadowEffect Color="#000000" Direction="270" ShadowDepth="4" BlurRadius="20" Opacity="0.2"/>
-                        </Border.Effect>
-                        <Image x:Name="PreviewImageControl"
-                               Source="{Binding PreviewImage}" 
-                               Stretch="Uniform">
-                            <Image.LayoutTransform>
-                                <ScaleTransform ScaleX="{Binding PreviewZoom}" ScaleY="{Binding PreviewZoom}"/>
-                            </Image.LayoutTransform>
-                        </Image>
-                    </Border>
-                    
-                    <!-- No Preview Message -->
-                    <TextBlock Text="预览将在您输入数据后自动生成" 
-                             HorizontalAlignment="Center" 
-                             VerticalAlignment="Center"
-                             Foreground="{StaticResource Brush.TextSecondary}"
-                             FontSize="14"
-                             TextAlignment="Center">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="Visibility" Value="Collapsed"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding PreviewImage}" Value="{x:Null}">
-                                        <Setter Property="Visibility" Value="Visible"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
-                </Grid>
-            </ScrollViewer>
+            <TabControl Grid.Row="1" Background="Transparent" BorderThickness="0" Padding="0">
+                <TabItem Header="报告编辑" FontSize="14">
+                    <ScrollViewer Style="{StaticResource ModernScrollViewer}" VerticalScrollBarVisibility="Auto" Padding="16,12">
+                        <StackPanel MaxWidth="920" HorizontalAlignment="Stretch">
+                            <TextBlock Text="在此编辑将直接用于导出 PDF 与左侧预览。留空则使用左侧结构化表单自动生成的成文。" 
+                                       TextWrapping="Wrap" Foreground="{StaticResource Brush.TextSecondary}" FontSize="12" Margin="0,0,0,12"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                                <Button Content="从结构化填充" Command="{Binding FillNarrativeFromStructureCommand}" Style="{StaticResource Button.Secondary}" Padding="12,6" Margin="0,0,8,0"/>
+                                <Button Content="清空手工正文" Command="{Binding ClearManualNarrativeCommand}" Style="{StaticResource Button.Secondary}" Padding="12,6"/>
+                            </StackPanel>
+                            <TextBlock Text="超声所见" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,6"/>
+                            <TextBox Text="{Binding Report.EditedFindingsText, UpdateSourceTrigger=LostFocus}"
+                                     AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                                     MinHeight="160" Padding="10" FontSize="13" Margin="0,0,0,16"/>
+                            <TextBlock Text="超声提示" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,6"/>
+                            <TextBox Text="{Binding Report.EditedImpressionText, UpdateSourceTrigger=LostFocus}"
+                                     AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                                     MinHeight="120" Padding="10" FontSize="13"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+                <TabItem Header="PDF 预览" FontSize="14">
+                    <ScrollViewer x:Name="PreviewScrollViewer" 
+                                 Style="{StaticResource ModernScrollViewer}"
+                                 VerticalScrollBarVisibility="Auto" 
+                                 HorizontalScrollBarVisibility="Auto" 
+                                 Padding="30"
+                                 PreviewMouseWheel="PreviewScrollViewer_PreviewMouseWheel"
+                                 MouseLeftButtonDown="PreviewScrollViewer_MouseLeftButtonDown"
+                                 MouseLeftButtonUp="PreviewScrollViewer_MouseLeftButtonUp"
+                                 MouseMove="PreviewScrollViewer_MouseMove">
+                        <Grid>
+                            <Border Background="White" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,10,0,30">
+                                <Border.Effect>
+                                    <DropShadowEffect Color="#000000" Direction="270" ShadowDepth="4" BlurRadius="20" Opacity="0.2"/>
+                                </Border.Effect>
+                                <Image x:Name="PreviewImageControl"
+                                       Source="{Binding PreviewImage}" 
+                                       Stretch="Uniform">
+                                    <Image.LayoutTransform>
+                                        <ScaleTransform ScaleX="{Binding PreviewZoom}" ScaleY="{Binding PreviewZoom}"/>
+                                    </Image.LayoutTransform>
+                                </Image>
+                            </Border>
+                            
+                            <TextBlock Text="预览将在您输入数据后自动生成" 
+                                     HorizontalAlignment="Center" 
+                                     VerticalAlignment="Center"
+                                     Foreground="{StaticResource Brush.TextSecondary}"
+                                     FontSize="14"
+                                     TextAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding PreviewImage}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
+                    </ScrollViewer>
+                </TabItem>
+            </TabControl>
         </Grid>
     </Border>
 </UserControl>
-

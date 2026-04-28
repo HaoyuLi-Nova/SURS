@@ -106,6 +106,10 @@ namespace SURS.App.ViewModels
         public RelayCommand ResetZoomPreviewCommand { get; }
         public RelayCommand AddUterusNoduleCommand { get; }
         public RelayCommand<MyometriumNodule?> RemoveUterusNoduleCommand { get; }
+        /// <summary>将当前结构化数据生成的「超声所见 / 超声提示」填入右侧编辑区。</summary>
+        public RelayCommand FillNarrativeFromStructureCommand { get; }
+        /// <summary>清空手工正文，导出与预览恢复为仅依据左侧表单自动成文。</summary>
+        public RelayCommand ClearManualNarrativeCommand { get; }
 
         /// <summary>
         /// 处理鼠标滚轮缩放
@@ -141,6 +145,9 @@ namespace SURS.App.ViewModels
             ZoomInPreviewCommand = new RelayCommand(() => PreviewZoom += PreviewConstants.BaseZoom * 0.5); // 每次增加50%（相对于基准）
             ZoomOutPreviewCommand = new RelayCommand(() => PreviewZoom -= PreviewConstants.BaseZoom * 0.5); // 每次减少50%（相对于基准）
             ResetZoomPreviewCommand = new RelayCommand(() => PreviewZoom = PreviewConstants.BaseZoom); // 重置到基准值（100%）
+
+            FillNarrativeFromStructureCommand = new RelayCommand(FillNarrativeFromStructure);
+            ClearManualNarrativeCommand = new RelayCommand(ClearManualNarrative);
 
             RemoveUterusNoduleCommand = new RelayCommand<MyometriumNodule?>(
                 nodule =>
@@ -428,6 +435,22 @@ namespace SURS.App.ViewModels
         private void TogglePreview()
         {
             IsPreviewVisible = !IsPreviewVisible;
+        }
+
+        private void FillNarrativeFromStructure()
+        {
+            if (Report == null) return;
+            Report.EditedFindingsText = ReportNarrativeTextBuilder.BuildAutoFindingsText(Report);
+            Report.EditedImpressionText = ReportNarrativeTextBuilder.BuildAutoImpressionText(Report);
+            TriggerPreviewUpdate();
+        }
+
+        private void ClearManualNarrative()
+        {
+            if (Report == null) return;
+            Report.EditedFindingsText = string.Empty;
+            Report.EditedImpressionText = string.Empty;
+            TriggerPreviewUpdate();
         }
 
         private async Task ExportPdfAsync()

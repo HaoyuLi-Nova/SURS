@@ -440,6 +440,22 @@ namespace SURS.App.Models
             set => SetProperty(ref _uterusDescription, value);
         }
 
+        /// <summary>右侧「报告编辑」中的手工「超声所见」全文；为空时 PDF/预览 使用由结构化数据自动生成的成文。</summary>
+        private string _editedFindingsText = string.Empty;
+        public string EditedFindingsText
+        {
+            get => _editedFindingsText;
+            set => SetProperty(ref _editedFindingsText, value);
+        }
+
+        /// <summary>手工「超声提示」全文（可含多段）；为空时使用左侧表单与 O-RADS 的自动生成逻辑。</summary>
+        private string _editedImpressionText = string.Empty;
+        public string EditedImpressionText
+        {
+            get => _editedImpressionText;
+            set => SetProperty(ref _editedImpressionText, value);
+        }
+
         private void InitializeAdnexaRegions()
         {
             // 默认创建 4 个一级菜单，允许分别填写"正常/异常"
