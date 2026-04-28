@@ -1,74 +1,106 @@
-# SURS - 超声结构化报告系统 (Structured Ultrasound Reporting System)
+# SURS - 超声结构化报告系统
 
-SURS 是一个基于 WPF 开发的现代化医疗超声报告生成系统。它专为医生设计，用于快速录入卵巢超声检查数据，并基于 O-RADS 标准生成专业的 PDF 报告。
+SURS（Structured Ultrasound Reporting System）是一个基于 **WPF + .NET 9** 的妇科超声结构化报告工具。系统面向临床医生，提供结构化录入、O-RADS 分级辅助、实时预览与 PDF 导出能力，帮助提升报告标准化与出具效率。
 
-## ✨ 核心功能
+## 功能概览
 
-*   **结构化数据录入**: 提供直观的卡片式界面，支持卵巢、囊肿、肿物等详细参数的录入。
-*   **智能交互**: 根据选择的病灶类型（如单房/多房囊肿），动态显示/隐藏相关填写区域。
-*   **O-RADS 分级**: 集成 O-RADS 分级标准，辅助医生进行风险评估。
-*   **PDF 报告导出**: 一键生成排版精美、符合医疗规范的 A4 PDF 报告。
-*   **现代化 UI**: 采用医疗蓝为主色调的现代化设计，减轻视觉疲劳，提升操作体验。
+- **结构化录入**：按“报告头、子宫、子宫内膜、附件区、盆腔积液、结论”等模块分区填写，减少漏项。
+- **动态表单交互**：根据病灶类型/选项变化，联动显示对应字段，降低无效输入。
+- **O-RADS 分级辅助**：根据病灶特征进行分级计算并展示结果卡片。
+- **实时报告预览**：录入内容变更后自动刷新预览，支持显示/隐藏预览、缩放与重置。
+- **一键导出 PDF**：生成 A4 医疗报告，支持发布为单文件可执行程序。
 
-## 🛠 技术栈
+## 技术栈
 
-*   **开发框架**: .NET 9.0
-*   **UI 框架**: WPF (Windows Presentation Foundation)
-*   **MVVM 库**: CommunityToolkit.Mvvm
-*   **PDF 引擎**: QuestPDF
-*   **IDE**: Visual Studio / VS Code (Trae IDE)
+- **运行平台**：.NET 9（`net9.0-windows`）
+- **桌面框架**：WPF
+- **架构模式**：MVVM
+- **主要依赖**：
+  - `CommunityToolkit.Mvvm`（命令/属性通知）
+  - `QuestPDF`（PDF 生成）
 
-## 🚀 快速开始
+## 目录结构
 
-### 环境要求
-
-*   Windows 10/11
-*   .NET 9.0 SDK
-
-### 运行步骤
-
-1.  克隆仓库：
-    ```bash
-    git clone https://github.com/yourusername/SURS.git
-    cd SURS
-    ```
-
-2.  还原依赖并运行：
-    ```bash
-    cd SURS.App
-    dotnet restore
-    dotnet run
-    ```
-3.  导出exe文件：
-   ```bash
-   
-   dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o d:\Myproject\SURS\Publish
-
-    ```
-   
-
-## 📂 项目结构
-
-```
+```text
 SURS/
-├── SURS.App/           # WPF 应用程序主项目
-│   ├── Models/         # 数据模型 (Ovary, Lesion, SursReport)
-│   ├── ViewModels/     # 视图模型 (MainViewModel)
-│   ├── Services/       # 服务层 (PdfService - QuestPDF 实现)
-│   ├── Views/          # XAML 视图文件
-│   └── App.xaml        # 应用程序入口与资源定义
-└── SURS.sln            # 解决方案文件
+├── SURS.App/                  # WPF 主应用（UI + ViewModel + 应用服务）
+│   ├── Controls/              # 业务表单与公共控件
+│   ├── ViewModels/            # 主流程状态与命令（MainViewModel）
+│   ├── Models/                # 报告领域模型
+│   ├── Services/              # PDF、对话框等应用服务
+│   ├── Converters/            # XAML 数据转换器
+│   ├── Helpers/               # 事件订阅与控件辅助工具
+│   └── Common/                # 日志与常量
+├── SURS.Core/                 # 核心抽象与领域定义（接口、实体、公共结果）
+├── SURS.Infrastructure/       # 基础设施实现（依赖 Core）
+├── docs/                      # 架构、模块拆分与实施文档
+└── SURS.sln                   # 解决方案文件
 ```
 
-## 📝 许可证
+## 环境要求
 
-本项目采用 MIT 许可证。
+- Windows 10/11
+- .NET 9 SDK
 
+> 说明：`SURS.App` 为 WPF 桌面应用，请在 Windows 环境构建与运行。
 
+## 快速开始
 
-## 导出流程
-cd d:\Myproject\SURS; dotnet publish SURS.App -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishReadyToRun=true -o Publish
+### 1) 克隆仓库
 
-cd d:\Myproject\SURS\Publish; Get-ChildItem -File | Select-Object Name, Length, LastWriteTime | Format-Table -AutoSize
+```bash
+git clone https://github.com/yourusername/SURS.git
+cd SURS
+```
 
-位置：d:\Myproject\SURS\Publish\SURS.App.exe
+### 2) 还原依赖
+
+```bash
+dotnet restore SURS.sln
+```
+
+### 3) 本地运行（调试）
+
+```bash
+dotnet run --project SURS.App/SURS.App.csproj
+```
+
+## 构建与发布
+
+### 发布为 Windows x64 单文件（自包含）
+
+```bash
+dotnet publish SURS.App/SURS.App.csproj \
+  -c Release \
+  -r win-x64 \
+  --self-contained true \
+  -p:PublishSingleFile=true \
+  -p:IncludeNativeLibrariesForSelfExtract=true \
+  -p:PublishReadyToRun=true \
+  -o ./Publish
+```
+
+发布完成后，可执行文件默认位于：
+
+```text
+./Publish/SURS.App.exe
+```
+
+## 开发说明
+
+- 主入口：`SURS.App/App.xaml`、`SURS.App/MainWindow.xaml`
+- 主流程逻辑：`SURS.App/ViewModels/MainViewModel.cs`
+- PDF 生成服务：`SURS.App/Services/PdfService.cs`
+- O-RADS 计算服务：`SURS.App/Services/ORadsCalculator.cs`
+
+## 文档索引
+
+- 架构设计：`docs/架构设计文档.md`
+- 架构实施：`docs/架构实施指南.md`
+- 模块拆分：`docs/模块拆分详细方案.md`
+- O-RADS 实现：`docs/O-RADS实现说明.md`
+- 实施检查：`docs/实施检查清单.md`
+
+## 许可证
+
+本项目采用 MIT License。
