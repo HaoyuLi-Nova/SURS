@@ -482,3 +482,6 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# SURS license signing keys (private keys must never enter the repository)
+tools/**/.keys/

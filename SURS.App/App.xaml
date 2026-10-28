@@ -1,10 +1,9 @@
-﻿<Application x:Class="SURS.App.App"
+<Application x:Class="SURS.App.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:SURS.App"
              xmlns:converters="clr-namespace:SURS.App.Converters"
-             xmlns:helpers="clr-namespace:SURS.App.Helpers"
-             StartupUri="MainWindow.xaml">
+             xmlns:helpers="clr-namespace:SURS.App.Helpers">
     <Application.Resources>
         
         <!-- ============================================ -->

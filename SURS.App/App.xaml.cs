@@ -7,6 +7,7 @@ using System.Windows.Data;
 using System.Windows.Input;
 using SURS.App.Common;
 using SURS.App.Services;
+using SURS.App.Services.License;
 using SURS.App.Converters;
 
 namespace SURS.App;
@@ -19,17 +20,58 @@ public partial class App : Application
     private readonly ILogger _logger = new FileLogger();
     private readonly IDialogService _dialogService = new DialogService();
 
+    private LicenseService? _licenseService;
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
-        
-        // 处理未捕获的异常
-        this.DispatcherUnhandledException += App_DispatcherUnhandledException;
-        AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
-        
-        _logger.LogInfo("应用程序启动");
-    }
 
+        // 登录窗口关闭到主窗口显示之间没有活动窗口，必须显式控制退出。
+        ShutdownMode = System.Windows.ShutdownMode.OnExplicitShutdown;
+        DispatcherUnhandledException += App_DispatcherUnhandledException;
+        AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+        _logger.LogInfo("应用程序启动");
+
+        try
+        {
+            _licenseService = new LicenseService(_logger);
+            var gate = _licenseService.StartupGate();
+            if (gate.Status == LicenseStatus.Expired)
+            {
+                // 过期后禁止旧授权登录，但保留“输入新卡续期”的唯一入口。
+                _logger.LogWarning("授权已到期，进入续期流程：" + gate.Message);
+                _dialogService.ShowMessage("SURS 授权已到期", gate.Message + "\n\n请使用发放方提供的新卡续期。");
+            }
+            else if (gate.Status != LicenseStatus.Valid && gate.Status != LicenseStatus.NotActivated)
+            {
+                _logger.LogWarning("启动门禁拒绝进入：" + gate.Status + "；" + gate.Message);
+                _dialogService.ShowError("SURS 授权", gate.Message);
+                Shutdown(1);
+                return;
+            }
+
+            var loginWindow = new LoginWindow(_licenseService, gate, _logger);
+            if (loginWindow.ShowDialog() != true)
+            {
+                _logger.LogInfo("用户取消登录，应用程序退出");
+                Shutdown(0);
+                return;
+            }
+
+            var mainWindow = new MainWindow();
+            MainWindow = mainWindow;
+            mainWindow.Closed += (_, _) => Shutdown(0);
+            mainWindow.Show();
+            _logger.LogInfo("登录成功，主窗口已打开");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("启动授权/登录流程失败", ex);
+            _dialogService.ShowError("SURS 启动失败",
+                "无法完成授权校验或登录，软件将退出。\n\n" + ex.Message + "\n\n详细信息已记录到日志。");
+            Shutdown(1);
+        }
+    }
     private void App_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
     {
         _logger.LogError("未处理的 UI 线程异常", e.Exception);
