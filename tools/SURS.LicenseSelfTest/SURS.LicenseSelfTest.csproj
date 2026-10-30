@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <!-- net9.0-windows：LicenseService 使用 Microsoft.Win32.Registry，保持与 App 一致 -->
     <TargetFramework>net9.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -9,11 +11,21 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!--
+      复用 SURS.App 授权模块的同一份源文件（LicenseService 等），
+      保证“自检 = 验证实际发布到软件里的那份代码”，而不是测试副本。
+      注意：这些文件仅依赖 BCL + Microsoft.Win32.Registry，不得引用任何 WPF / UI 类型。
+    -->
     <Compile Include="..\..\SURS.App\Services\License\LicenseCrypto.cs" Link="LicenseCrypto.cs" />
     <Compile Include="..\..\SURS.App\Services\License\LicenseService.cs" Link="LicenseService.cs" />
     <Compile Include="..\..\SURS.App\Services\License\MachineFingerprint.cs" Link="MachineFingerprint.cs" />
     <Compile Include="..\..\SURS.App\Services\License\EmbeddedLicenseKey.cs" Link="EmbeddedLicenseKey.cs" />
     <Compile Include="..\..\SURS.App\Common\ILogger.cs" Link="ILogger.cs" />
-    <Compile Include="..\SURS.LicenseTool\LicenseLedger.cs" Link="LicenseLedger.cs" />
+    <!--
+      复用发卡工具台账的同源实现，验证“真实用于交付的台账逻辑”，
+      LicenseLedger.cs 仅依赖 BCL + System.Text.Json，与 WPF 无关。
+    -->
+    <Compile Include="..\..\tools\SURS.LicenseTool\LicenseLedger.cs" Link="LicenseLedger.cs" />
   </ItemGroup>
+
 </Project>

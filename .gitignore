@@ -485,3 +485,26 @@ $RECYCLE.BIN/
 
 # SURS license signing keys (private keys must never enter the repository)
 tools/**/.keys/
+
+# Local license operations and delivery artifacts (may contain plaintext passwords or private keys)
+**/ledger.jsonl
+**/*ledger*.jsonl
+乙方机密/
+交付包-60家/
+甲方交接包/
+
+# ------------------------------------------------------------
+# SURS 本地新增（避免再被入库）：
+#  - 大型测试/交付二进制：超 GitHub 100MB 硬限，push 会被拒
+#  - 内部零碎与含明文密码的测试文件：公开仓库严禁入库
+# ------------------------------------------------------------
+Publish/
+*.zip
+_待清理/
+_测试环境/**/SURS.App.exe
+_测试环境/**/*.exe
+_测试环境/**/_临时台账-测试用.jsonl
+_测试环境/**/交付单.txt
+_测试环境/**/截图-*.png
+_测试环境/**/运行日志.txt
+_测试环境/**/体检报告-*.txt

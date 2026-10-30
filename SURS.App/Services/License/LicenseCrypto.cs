@@ -101,18 +101,24 @@ namespace SURS.License
         /// </summary>
         public string ToCanonicalString()
         {
-            return string.Join("\n", new[]
+            var fields = new List<string>
             {
                 "v=" + SchemeVersion.ToString(CultureInfo.InvariantCulture),
                 "account=" + Account,
                 "salt=" + PasswordSaltBase64,
                 "hash=" + PasswordHashBase64,
                 "days=" + ValidityDays.ToString(CultureInfo.InvariantCulture),
-                "note=" + (Note ?? string.Empty),
-                "issued=" + IssuedAtUtcTicks.ToString(CultureInfo.InvariantCulture),
-            });
-        }
+            };
 
+            // note 是可选字段：为空时整行省略，避免产生多个语义相同但字节不同的规范串。
+            if (!string.IsNullOrEmpty(Note))
+            {
+                fields.Add("note=" + Note);
+            }
+
+            fields.Add("issued=" + IssuedAtUtcTicks.ToString(CultureInfo.InvariantCulture));
+            return string.Join("\n", fields);
+        }
         public byte[] ToCanonicalBytes() => Encoding.UTF8.GetBytes(ToCanonicalString());
 
         /// <summary>
@@ -174,18 +180,13 @@ namespace SURS.License
                 return LicenseParseResult.Fail("授权数据为空");
             }
 
-            var allowed = new HashSet<string>
-            {
-                "v", "account", "salt", "hash", "days", "note", "issued"
-            };
-
-            var fields = new Dictionary<string, string>();
             var lines = text.Split('\n');
-            if (lines.Length == 0 || lines.Length > 32)
+            if (lines.Length != 6 && lines.Length != 7)
             {
-                return LicenseParseResult.Fail("授权数据行数异常");
+                return LicenseParseResult.Fail("授权数据字段数量无效");
             }
 
+            var fields = new Dictionary<string, string>(StringComparer.Ordinal);
             for (int i = 0; i < lines.Length; i++)
             {
                 var line = lines[i];
@@ -203,31 +204,30 @@ namespace SURS.License
                 var key = line.Substring(0, eq);
                 var value = line.Substring(eq + 1);
 
-                if (!allowed.Contains(key))
+                var expectedKey = i switch
                 {
-                    return LicenseParseResult.Fail("授权数据包含未知字段: " + key);
+                    0 => "v",
+                    1 => "account",
+                    2 => "salt",
+                    3 => "hash",
+                    4 => "days",
+                    5 => lines.Length == 7 ? "note" : "issued",
+                    6 => "issued",
+                    _ => string.Empty,
+                };
+
+                if (!string.Equals(key, expectedKey, StringComparison.Ordinal))
+                {
+                    return LicenseParseResult.Fail("授权数据字段顺序无效: " + key);
                 }
 
-                if (fields.ContainsKey(key))
-                {
-                    return LicenseParseResult.Fail("授权数据包含重复字段: " + key);
-                }
-
-                // 空值仅允许出现在 note（备注可为空），其余字段必须有值。
-                if (value.Length == 0 && key != "note")
+                // 规范串使用“空备注省略 note 行”，因此任何空值字段都视为非规范内容。
+                if (value.Length == 0)
                 {
                     return LicenseParseResult.Fail("授权数据字段为空: " + key);
                 }
 
                 fields[key] = value;
-            }
-
-            foreach (var key in allowed)
-            {
-                if (!fields.ContainsKey(key))
-                {
-                    return LicenseParseResult.Fail("授权数据缺少字段: " + key);
-                }
             }
 
             if (fields["v"] != SchemeVersion.ToString(CultureInfo.InvariantCulture))
@@ -240,7 +240,7 @@ namespace SURS.License
                 Account = fields["account"],
                 PasswordSaltBase64 = fields["salt"],
                 PasswordHashBase64 = fields["hash"],
-                Note = fields["note"]
+                Note = fields.TryGetValue("note", out var note) ? note : string.Empty,
             };
 
             if (!int.TryParse(fields["days"], NumberStyles.Integer, CultureInfo.InvariantCulture, out var days) ||
@@ -281,7 +281,6 @@ namespace SURS.License
             payload = parsed;
             return LicenseParseResult.Ok();
         }
-
         private static bool IsValidTicks(string text, out long ticks)
         {
             ticks = 0;
@@ -494,6 +493,16 @@ namespace SURS.License
                 return result;
             }
 
+            // 强制“规范 base64url”：拒绝仅改写末字符填充位、字节却相同的等效文本。
+            // 由此保证“一张卡 = 唯一文本 = 唯一指纹”，防止同一签名的文本变形
+            // 刷新出不同卡指纹，绕过“单卡单机一次性”的消费台账。
+            if (!string.Equals(Base64Url.Encode(canonicalBytes), parts[1], StringComparison.Ordinal) ||
+                !string.Equals(Base64Url.Encode(signature), parts[2], StringComparison.Ordinal))
+            {
+                result.Error = "激活卡号编码非规范（内容被改动）";
+                return result;
+            }
+
             var text = Encoding.UTF8.GetString(canonicalBytes);
             var parse = LicensePayload.TryParseCanonical(text, out var payload);
             result.Parsed = parse.Success;
@@ -536,6 +545,12 @@ namespace SURS.License
             catch (FormatException)
             {
                 result.Error = "激活卡号编码无效";
+                return result;
+            }
+
+            if (!string.Equals(Base64Url.Encode(canonicalBytes), parts[1], StringComparison.Ordinal))
+            {
+                result.Error = "激活卡号编码非规范（内容被改动）";
                 return result;
             }
 

@@ -138,7 +138,8 @@ namespace SURS.LicenseTool
                 }
             }
 
-            int next = Math.Max(list.Count + 1, maxDefault + 1);
+            // 续期记录会重复使用原账号，不能用“记录条数+1”分配，否则会跳过序号。
+            int next = maxDefault + 1;
             return "hos" + next.ToString("00", CultureInfo.InvariantCulture);
         }
     }

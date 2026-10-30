@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using SURS.License;
@@ -9,24 +10,8 @@ using SURS.License;
 namespace SURS.LicenseTool
 {
     /// <summary>
-    /// SURS 授权卡发放工具（仅供甲方 / 授权管理员使用，绝不随软件发布）。
-    ///
-    /// 命令：
-    ///   init       生成 RSA 密钥对（私钥保存在 keys-dir，公钥需嵌入软件 EmbeddedLicenseKey.cs）
-    ///   issue      签发一张“机构-账号-密码-有效天数”授权卡（= 激活卡 / 授权串）
-    ///   pubkey     打印公钥（用于嵌入软件）
-    ///   verify     用公钥验签某张卡（支持排查）
-    ///   inspect    不验签，仅解析卡片内容（售后排查用，无需私钥）
-    ///   ledger     发放台账查询（list 子命令）
-    ///
-    /// 语义（v2，首次使用起算）：
-    ///   卡只声明“自本机首次激活当刻起可用 N 天”，到期 = 首次激活 + N×24h；
-    ///   软件在该电脑上记录首次激活时刻，并做防重置（多副本 + 机器指纹 + 单卡单机一次性）。
-    ///
-    /// 安全红线：
-    ///   1) keys-dir 中的 private_key.pem 是最高机密：离线保管、加密备份、严禁入库/发布；
-    ///   2) 重新 init 会让旧卡全部失效，请谨慎；
-    ///   3) 台账（ledger.jsonl）含明文账号密码，请单独妥善保管。
+    /// SURS 离线发卡工具。仅供甲方授权管理员使用，绝不随客户端发布。
+    /// 命令：init / issue / batch / pubkey / verify / inspect / ledger list / list。
     /// </summary>
     internal static class Program
     {
@@ -38,9 +23,7 @@ namespace SURS.LicenseTool
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "SURS.LicenseTool", ".keys");
 
-        private static readonly string DefaultLedgerPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "SURS.LicenseTool", "ledger.jsonl");
+        private static readonly string DefaultLedgerPath = LicenseLedger.DefaultPath;
 
         private static int Main(string[] args)
         {
@@ -68,12 +51,18 @@ namespace SURS.LicenseTool
             {
                 case "init": return Init(args);
                 case "issue": return Issue(args);
+                case "batch": return Batch(args);
                 case "pubkey": return PubKey(args);
                 case "verify": return Verify(args);
                 case "inspect": return Inspect(args);
+                case "list": return ListLedger(args);
                 case "ledger":
-                case "list":
-                    return Ledger(args);
+                    if (args.Length >= 2 && string.Equals(args[1], "list", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return ListLedger(args);
+                    }
+                    Console.WriteLine("用法：SURS.LicenseTool ledger list [--note 过滤] [--account 过滤] [--full] [--ledger 台账]");
+                    return 1;
                 case "help":
                 case "--help":
                 case "-h":
@@ -85,10 +74,6 @@ namespace SURS.LicenseTool
                     return 2;
             }
         }
-
-        // ------------------------------------------------------------
-        // 参数解析辅助
-        // ------------------------------------------------------------
 
         private static string? FindValue(string[] args, string key)
         {
@@ -105,15 +90,7 @@ namespace SURS.LicenseTool
 
         private static bool HasFlag(string[] args, string key)
         {
-            for (int i = 0; i < args.Length; i++)
-            {
-                if (string.Equals(args[i], key, StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-            }
-
-            return false;
+            return args.Any(a => string.Equals(a, key, StringComparison.OrdinalIgnoreCase));
         }
 
         private static string KeysDir(string[] args)
@@ -133,10 +110,10 @@ namespace SURS.LicenseTool
             var value = FindValue(args, key);
             if (string.IsNullOrWhiteSpace(value))
             {
-                throw new ArgumentException($"缺少必填参数 {key}。");
+                throw new ArgumentException("缺少必填参数 " + key + "。");
             }
 
-            return value;
+            return value.Trim();
         }
 
         private static int ParseInt(string[] args, string key, int defaultValue)
@@ -147,9 +124,10 @@ namespace SURS.LicenseTool
                 return defaultValue;
             }
 
-            if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) || parsed < 1)
+            if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) ||
+                parsed < 1 || parsed > LicensePayload.MaxValidityDays)
             {
-                throw new ArgumentException($"{key} 必须是大于 0 的整数。");
+                throw new ArgumentException(key + " 必须是 1~" + LicensePayload.MaxValidityDays + " 的整数。");
             }
 
             return parsed;
@@ -157,34 +135,32 @@ namespace SURS.LicenseTool
 
         private static void PrintHelp()
         {
-            Console.WriteLine("SURS 授权卡发放工具（60 家医院 · 每家 1 组账号密码 · 首次使用起算）");
+            Console.WriteLine("SURS 离线授权卡发放工具（60 家医院 · 每家 1 组账号密码 · 首次使用起算）");
             Console.WriteLine();
             Console.WriteLine("用法：");
             Console.WriteLine("  SURS.LicenseTool init    [--keys-dir DIR] [--bits 2048] [--force]");
-            Console.WriteLine("  SURS.LicenseTool issue   --account 账号 [--password 密码|--gen-password] [--days 7] [--note 机构]");
-            Console.WriteLine("                            [--license-file 发布包\\license.card] [--slip 交付单.txt] [--ledger 台账] [--keys-dir DIR]");
+            Console.WriteLine("  SURS.LicenseTool issue   --note 机构 [--days 7] [--account hos01]");
+            Console.WriteLine("                            [--password 密码 | --gen-password] [--out 交付单.txt]");
+            Console.WriteLine("                            [--license-file 仅卡号文件.txt] [--ledger 台账.jsonl] [--keys-dir DIR]");
+            Console.WriteLine("  SURS.LicenseTool batch   --count N | --hospitals 清单.txt [--days 7] [--out 交付目录]");
+            Console.WriteLine("                            [--password 通用密码] [--app-exe 发布\\SURS.App.exe]");
+            Console.WriteLine("                            [--ledger 台账.jsonl] [--keys-dir DIR]");
             Console.WriteLine("  SURS.LicenseTool pubkey  [--keys-dir DIR]");
-            Console.WriteLine("  SURS.LicenseTool verify  <卡片号> [--keys-dir DIR]");
-            Console.WriteLine("  SURS.LicenseTool inspect <卡片号>");
+            Console.WriteLine("  SURS.LicenseTool verify  <激活卡号> [--keys-dir DIR]");
+            Console.WriteLine("  SURS.LicenseTool inspect <激活卡号>");
             Console.WriteLine("  SURS.LicenseTool ledger  list [--note 过滤] [--account 过滤] [--full] [--ledger 台账]");
+            Console.WriteLine("  SURS.LicenseTool list    [--note 过滤] [--account 过滤] [--full] [--ledger 台账]");
             Console.WriteLine();
-            Console.WriteLine("命令说明：");
-            Console.WriteLine("  init    生成 RSA 密钥对；私钥保存于 keys-dir，公钥需嵌入软件 EmbeddedLicenseKey.cs");
-            Console.WriteLine("  issue   签发授权卡（激活卡/授权串）；默认 7 天，--days 可改，--note 记机构单位");
-            Console.WriteLine("  pubkey  打印公钥 PEM（嵌入软件时用）");
-            Console.WriteLine("  verify  用 keys-dir 的公钥验签卡片");
-            Console.WriteLine("  inspect 不验签，仅解析卡片内容（售后排查用，无需私钥）");
-            Console.WriteLine("  ledger list  查看发放台账（谁领了卡、何时签发、有效期）");
+            Console.WriteLine("默认行为：");
+            Console.WriteLine("  issue 的 --note 必填；未指定 --account 时按台账自动分配 hosNN；");
+            Console.WriteLine("  未指定 --password 或使用 --gen-password 时生成 16 位强随机密码；");
+            Console.WriteLine("  每次成功签发自动追加 JSONL 台账（含明文密码，必须保密）。");
             Console.WriteLine();
             Console.WriteLine("默认 keys-dir：" + DefaultKeysDir);
             Console.WriteLine("默认台账：   " + DefaultLedgerPath);
             Console.WriteLine();
-            Console.WriteLine("安全提醒：private_key.pem 严禁入库/发布；台账含明文密码，请妥善保管。");
+            Console.WriteLine("安全提醒：private_key.pem 严禁入库/发布；台账和交付单含明文密码，请妥善保管。");
         }
-
-        // ------------------------------------------------------------
-        // init
-        // ------------------------------------------------------------
 
         private static int Init(string[] args)
         {
@@ -192,291 +168,355 @@ namespace SURS.LicenseTool
             var bitsRaw = FindValue(args, "--bits");
             int bits = DefaultKeyBits;
             if (!string.IsNullOrWhiteSpace(bitsRaw) &&
-                (!int.TryParse(bitsRaw, NumberStyles.Integer, CultureInfo.InvariantCulture, out bits) || bits < 1024))
+                (!int.TryParse(bitsRaw, NumberStyles.Integer, CultureInfo.InvariantCulture, out bits) || bits < 2048))
             {
-                throw new ArgumentException("--bits 必须是 >= 1024 的整数。");
+                throw new ArgumentException("--bits 必须是 >= 2048 的整数。");
             }
 
             var privatePath = Path.Combine(keysDir, "private_key.pem");
             var publicPath = Path.Combine(keysDir, "public_key.pem");
-
             if (!HasFlag(args, "--force") && File.Exists(privatePath))
             {
                 throw new ArgumentException(
-                    $"密钥已存在（{privatePath}）。如需重新生成请加 --force（注意：旧卡将全部失效）。");
+                    "密钥已存在（" + privatePath + "）。如需重新生成请加 --force（旧卡将全部失效）。");
             }
 
             Directory.CreateDirectory(keysDir);
             using var rsa = RSA.Create(bits);
+            File.WriteAllText(privatePath, rsa.ExportPkcs8PrivateKeyPem(), new UTF8Encoding(false));
+            File.WriteAllText(publicPath, rsa.ExportSubjectPublicKeyInfoPem(), new UTF8Encoding(false));
 
-            var privatePem = rsa.ExportPkcs8PrivateKeyPem();
-            var publicPem = rsa.ExportSubjectPublicKeyInfoPem();
-
-            File.WriteAllText(privatePath, privatePem, new UTF8Encoding(false));
-            File.WriteAllText(publicPath, publicPem, new UTF8Encoding(false));
-
-            Console.WriteLine("已生成 RSA-{0} 密钥对：", bits);
+            Console.WriteLine("已生成 RSA-" + bits + " 密钥对：");
             Console.WriteLine("  私钥：" + privatePath);
             Console.WriteLine("  公钥：" + publicPath);
             Console.WriteLine();
-            Console.WriteLine("下一步：把公钥粘贴到 SURS.App/Services/License/EmbeddedLicenseKey.cs 的 PublicKeyPem 并重新编译。");
+            Console.WriteLine("下一步：把公钥替换到 SURS.App/Services/License/EmbeddedLicenseKey.cs 后重新发布。");
             Console.WriteLine();
-            Console.WriteLine("公开部分（公钥 PEM）：");
-            Console.WriteLine(publicPem);
-            Console.WriteLine();
-            Console.WriteLine("!!! 私钥 private_key.pem 是授权系统运转的关键：请离线保管、加密备份，严禁发布会 !!!");
+            Console.WriteLine("!!! private_key.pem 是最高机密：离线保管、加密备份，严禁发布或提交仓库 !!!");
             return 0;
         }
-
         // ------------------------------------------------------------
-        // issue
+        // issue：接一家发一家
         // ------------------------------------------------------------
 
         private static int Issue(string[] args)
         {
-            var account = RequireArg(args, "--account");
-            var password = HasFlag(args, "--gen-password") ? GeneratePassword() : RequireArg(args, "--password");
+            var note = RequireArg(args, "--note");
             var days = ParseInt(args, "--days", DefaultDays);
-            var note = FindValue(args, "--note") ?? string.Empty;
-            var keysDir = KeysDir(args);
-            var ledger = Path.GetFullPath(LedgerPath(args));
+            var ledger = LedgerPath(args);
+            var records = LicenseLedger.Load(ledger);
+            var usedAccounts = new HashSet<string>(records.Select(r => r.Account), StringComparer.OrdinalIgnoreCase);
 
-            var payload = LicensePayload.Create(account, password, days, note, DateTimeOffset.UtcNow);
-            if (!payload.IsAccountValid())
+            var account = FindValue(args, "--account")?.Trim();
+            if (string.IsNullOrEmpty(account))
             {
-                throw new ArgumentException("账号仅允许 1-32 位字母/数字/点/下划线/横线。");
+                account = NextAvailableDefaultAccount(records, usedAccounts);
             }
 
-            using var rsa = LoadPrivateRsa(keysDir);
-            var card = LicenseCrypto.CreateCard(payload, rsa);
-            var cardFp = LicenseCrypto.CardFingerprint(card);
-
-            // 1) 先记台账（失败则中止，保证发放全程留痕）。
-            var entry = new LedgerEntry
+            var explicitPassword = FindValue(args, "--password");
+            var forceGenerated = HasFlag(args, "--gen-password");
+            if (forceGenerated && !string.IsNullOrWhiteSpace(explicitPassword))
             {
-                Seq = NextSeq(ledger) + 1,
-                IssuedUtc = DateTimeOffset.UtcNow,
-                Note = note.Trim(),
-                Account = account,
-                Days = days,
-                Password = password,
-                Card = card,
-                CardFingerprint = cardFp,
-            };
-
-            var ledgerOk = AppendLedger(ledger, entry);
-            if (!ledgerOk)
-            {
-                Console.Error.WriteLine("错误：无法写入发放台账：" + ledger);
-                return 2;
+                throw new ArgumentException("--password 与 --gen-password 不能同时使用。");
             }
 
-            // 2) 授权文件（license.card）
-            var licenseFile = FindValue(args, "--license-file");
-            if (!string.IsNullOrWhiteSpace(licenseFile))
+            var password = forceGenerated || string.IsNullOrWhiteSpace(explicitPassword)
+                ? GeneratePassword()
+                : explicitPassword;
+
+            var issuedAt = DateTimeOffset.UtcNow;
+            using var rsa = LoadPrivateRsa(KeysDir(args));
+            var signed = CreateSignedCard(note, account, password, days, issuedAt, rsa);
+
+            // 先落台账，确保任何已打印/交付的卡都有签发记录。
+            LicenseLedger.Append(ledger, signed.Record);
+
+            var outputPath = FindValue(args, "--out") ?? FindValue(args, "--slip");
+            if (!string.IsNullOrWhiteSpace(outputPath))
             {
-                var full = Path.GetFullPath(licenseFile);
-                Directory.CreateDirectory(Path.GetDirectoryName(full)!);
-                File.WriteAllText(full, card + Environment.NewLine, new UTF8Encoding(false));
-                Console.WriteLine("已写入授权文件：" + full);
+                var full = Path.GetFullPath(outputPath);
+                EnsureParentDirectory(full);
+                WriteTextAtomic(full, BuildDeliverySlip(signed.Record, signed.Card));
+                Console.WriteLine("交付单：" + full);
             }
 
-            // 3) 交付单（可选）
-            var slip = FindValue(args, "--slip");
-            if (!string.IsNullOrWhiteSpace(slip))
+            var cardFilePath = FindValue(args, "--license-file");
+            if (!string.IsNullOrWhiteSpace(cardFilePath))
             {
-                var full = Path.GetFullPath(slip);
-                Directory.CreateDirectory(Path.GetDirectoryName(full)!);
-                File.WriteAllText(full, BuildSlipText(entry), new UTF8Encoding(false));
-                Console.WriteLine("已写入交付单：" + full);
+                var full = Path.GetFullPath(cardFilePath);
+                EnsureParentDirectory(full);
+                WriteTextAtomic(full, signed.Card + Environment.NewLine);
+                Console.WriteLine("卡号文件：" + full);
             }
 
             Console.WriteLine();
-            Console.WriteLine("========== 授权信息 ==========");
-            Console.WriteLine("机构：" + (entry.Note ?? string.Empty));
-            Console.WriteLine("账号：" + entry.Account);
-            Console.WriteLine("密码：" + entry.Password);
-            Console.WriteLine("有效：" + entry.Days + " 天（自该院电脑首次激活当刻起算，共 " + (entry.Days * 24) + " 小时）");
-            Console.WriteLine("台账序号：" + entry.Seq);
+            Console.WriteLine("签发成功");
+            Console.WriteLine("  机构：" + signed.Record.Institution);
+            Console.WriteLine("  账号：" + signed.Record.Account);
+            Console.WriteLine("  密码：" + signed.Record.Password);
+            Console.WriteLine("  天数：" + signed.Record.Days + " 天（自首次激活当刻起算）");
+            Console.WriteLine("  卡指纹：" + signed.Record.CardFingerprint);
+            Console.WriteLine("  激活卡号：" + signed.Card);
             Console.WriteLine();
-            Console.WriteLine("========== 激活卡号 ==========");
-            Console.WriteLine(entry.Card);
-            Console.WriteLine();
-            Console.WriteLine("提示：把“激活卡号 + 账号 + 密码”交给医院即可。");
-            Console.WriteLine("提醒：台账（" + ledger + "）含明文密码，请勿外传。");
+            Console.WriteLine("台账：" + ledger);
+            Console.WriteLine("注意：台账与交付单包含明文密码，仅限授权管理员保管。");
             return 0;
         }
 
-        private static string BuildSlipText(LedgerEntry e)
+        // ------------------------------------------------------------
+        // batch：按医院清单批量交付（可选增强能力）
+        // ------------------------------------------------------------
+
+        private static int Batch(string[] args)
+        {
+            var hospitalsFile = FindValue(args, "--hospitals");
+            var prefix = FindValue(args, "--prefix") ?? "医院";
+            var days = ParseInt(args, "--days", DefaultDays);
+            var outDir = Path.GetFullPath(FindValue(args, "--out") ??
+                Path.Combine(Environment.CurrentDirectory, "交付"));
+            var appExeRaw = FindValue(args, "--app-exe");
+            var sharedPassword = FindValue(args, "--password");
+            var ledger = LedgerPath(args);
+
+            var hospitals = new List<(string Note, string? Account, string? Password)>();
+            if (!string.IsNullOrWhiteSpace(hospitalsFile))
+            {
+                var file = Path.GetFullPath(hospitalsFile);
+                if (!File.Exists(file))
+                {
+                    throw new ArgumentException("找不到机构清单文件：" + file);
+                }
+
+                int lineNo = 0;
+                foreach (var raw in File.ReadAllLines(file))
+                {
+                    lineNo++;
+                    var line = raw.Trim();
+                    if (line.Length == 0 || line.StartsWith("#", StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    var fields = line.Split(new[] { ',', '\t' });
+                    var note = fields[0].Trim();
+                    string? account = fields.Length >= 2 && !string.IsNullOrWhiteSpace(fields[1]) ? fields[1].Trim() : null;
+                    string? password = fields.Length >= 3 && !string.IsNullOrWhiteSpace(fields[2]) ? fields[2].Trim() : null;
+                    if (note.Length == 0)
+                    {
+                        throw new ArgumentException(file + " 第 " + lineNo + " 行缺少机构名。");
+                    }
+
+                    hospitals.Add((note, account, password));
+                }
+
+                if (hospitals.Count == 0)
+                {
+                    throw new ArgumentException("机构清单文件为空：" + file);
+                }
+            }
+            else
+            {
+                int count = ParseInt(args, "--count", 0);
+                if (count < 1)
+                {
+                    throw new ArgumentException("必须提供 --count N 或 --hospitals 机构清单文件。");
+                }
+
+                int width = count >= 100 ? 3 : 2;
+                for (int i = 1; i <= count; i++)
+                {
+                    hospitals.Add((prefix + i.ToString("D" + width, CultureInfo.InvariantCulture), null, null));
+                }
+            }
+
+            string? appExeFull = null;
+            if (!string.IsNullOrWhiteSpace(appExeRaw))
+            {
+                appExeFull = Path.GetFullPath(appExeRaw);
+                if (!File.Exists(appExeFull))
+                {
+                    throw new ArgumentException("找不到 --app-exe：" + appExeFull);
+                }
+            }
+
+            Directory.CreateDirectory(outDir);
+            var records = LicenseLedger.Load(ledger);
+            var usedAccounts = new HashSet<string>(records.Select(r => r.Account), StringComparer.OrdinalIgnoreCase);
+            var manifest = new List<string> { "序号,机构,账号,密码,有效天数,文件夹,激活卡号" };
+            int created = 0;
+            int skipped = 0;
+
+            using var rsa = LoadPrivateRsa(KeysDir(args));
+            for (int index = 1; index <= hospitals.Count; index++)
+            {
+                var hospital = hospitals[index - 1];
+                var folderName = index.ToString("D2", CultureInfo.InvariantCulture) + "-" + SanitizeFolderName(hospital.Note);
+                var folder = Path.Combine(outDir, folderName);
+                if (Directory.Exists(folder))
+                {
+                    Console.WriteLine("跳过（文件夹已存在）：" + folderName);
+                    skipped++;
+                    continue;
+                }
+
+                var account = hospital.Account;
+                if (string.IsNullOrEmpty(account))
+                {
+                    account = NextAvailableDefaultAccount(records, usedAccounts);
+                }
+                else if (usedAccounts.Contains(account))
+                {
+                    throw new ArgumentException("批量签发账号重复：" + account);
+                }
+
+                var password = !string.IsNullOrWhiteSpace(hospital.Password)
+                    ? hospital.Password
+                    : (!string.IsNullOrWhiteSpace(sharedPassword) ? sharedPassword : GeneratePassword());
+                var issuedAt = DateTimeOffset.UtcNow;
+                var signed = CreateSignedCard(hospital.Note, account, password, days, issuedAt, rsa);
+
+                LicenseLedger.Append(ledger, signed.Record);
+                records.Add(signed.Record);
+                usedAccounts.Add(account);
+
+                Directory.CreateDirectory(folder);
+                WriteTextAtomic(Path.Combine(folder, CardFileName), signed.Card + Environment.NewLine);
+                WriteTextAtomic(Path.Combine(folder, "交付单.txt"), BuildDeliverySlip(signed.Record, signed.Card));
+                if (appExeFull != null)
+                {
+                    File.Copy(appExeFull, Path.Combine(folder, Path.GetFileName(appExeFull)), overwrite: false);
+                }
+
+                manifest.Add(string.Join(",",
+                    index.ToString(CultureInfo.InvariantCulture),
+                    EscapeCsv(signed.Record.Institution),
+                    EscapeCsv(signed.Record.Account),
+                    EscapeCsv(signed.Record.Password),
+                    signed.Record.Days.ToString(CultureInfo.InvariantCulture),
+                    EscapeCsv(folderName),
+                    EscapeCsv(signed.Card)));
+                Console.WriteLine("已生成 #" + index + "：" + folderName + "（账号 " + account + "）");
+                created++;
+            }
+
+            if (created > 0)
+            {
+                WriteTextAtomic(Path.Combine(outDir, "交付清单.csv"), string.Join(Environment.NewLine, manifest) + Environment.NewLine);
+            }
+
+            Console.WriteLine();
+            Console.WriteLine("批量完成：新建 " + created + " 家，跳过 " + skipped + " 家。");
+            Console.WriteLine("台账：" + ledger);
+            if (created > 0)
+            {
+                Console.WriteLine("提醒：台账、交付清单和每家交付单均含明文密码，请勿外传。");
+            }
+            return 0;
+        }
+
+        private static (LicenseLedgerRecord Record, string Card) CreateSignedCard(
+            string note,
+            string account,
+            string password,
+            int days,
+            DateTimeOffset issuedAt,
+            RSA signingKey)
+        {
+            var payload = LicensePayload.Create(account, password, days, note, issuedAt);
+            var card = LicenseCrypto.CreateCard(payload, signingKey);
+            var record = new LicenseLedgerRecord
+            {
+                Institution = payload.Note,
+                Account = payload.Account,
+                Days = payload.ValidityDays,
+                IssuedAt = issuedAt,
+                CardFingerprint = LicenseCrypto.CardFingerprint(card),
+                Password = password,
+                Warning = LicenseLedgerRecord.PlaintextWarning,
+            };
+            return (record, card);
+        }
+
+        private static string NextAvailableDefaultAccount(
+            IEnumerable<LicenseLedgerRecord> records,
+            HashSet<string> usedAccounts)
+        {
+            var list = records.ToList();
+            var candidate = LicenseLedger.NextDefaultAccount(list);
+            int number = int.Parse(candidate.Substring(3), CultureInfo.InvariantCulture);
+            while (usedAccounts.Contains(candidate))
+            {
+                number++;
+                candidate = "hos" + number.ToString("00", CultureInfo.InvariantCulture);
+            }
+
+            return candidate;
+        }
+
+        private static string BuildDeliverySlip(LicenseLedgerRecord record, string card)
         {
             var sb = new StringBuilder();
             sb.AppendLine("==============================================");
-            sb.AppendLine("        SURS 软件授权交付单");
+            sb.AppendLine("              SURS 授权交付单");
             sb.AppendLine("==============================================");
-            sb.AppendLine("机构：" + (e.Note ?? string.Empty));
-            sb.AppendLine("账号：" + e.Account);
-            sb.AppendLine("密码：" + e.Password);
-            sb.AppendLine("有效天数：" + e.Days + " 天（" + (e.Days * 24) + " 小时）");
-            sb.AppendLine("签发时间(UTC)：" + e.IssuedUtc.ToString("o", CultureInfo.InvariantCulture));
+            sb.AppendLine("机构：" + record.Institution);
+            sb.AppendLine("账号：" + record.Account);
+            sb.AppendLine("密码：" + record.Password);
+            sb.AppendLine("有效天数：" + record.Days + " 天（" + (record.Days * 24) + " 小时）");
+            sb.AppendLine("签发时间(UTC)：" + record.IssuedAt.ToString("o", CultureInfo.InvariantCulture));
+            sb.AppendLine("卡指纹：" + record.CardFingerprint);
             sb.AppendLine();
             sb.AppendLine("使用说明：");
-            sb.AppendLine("  1) 把“发布文件夹”（含授权文件）放到电脑上，双击 SURS 程序；");
-            sb.AppendLine("  2) 首次使用输入上面的“账号 + 密码”即可激活（自动读取授权文件）；");
-            sb.AppendLine("  3) 有效期自该电脑首次激活当刻起算 7 天，到期后请联系发放方领取新的授权；");
-            sb.AppendLine("  4) 若授权文件缺失，可在“密码”位置直接粘贴下面的激活卡号完成激活。");
+            sb.AppendLine("  1) 启动 SURS，在首次激活页面输入本单的激活卡号、账号和密码；");
+            sb.AppendLine("  2) 授权自该电脑首次激活当刻起算 " + record.Days + " 天，到期自动停用；");
+            sb.AppendLine("  3) 之后每次启动都只需输入账号和密码，软件不访问外网；");
+            sb.AppendLine("  4) 同一张卡可在不同电脑分别激活，但在同一台电脑只能使用一次；");
+            sb.AppendLine("  5) 到期续期必须联系发放方领取新卡，旧卡不能复用；");
+            sb.AppendLine("  6) 请勿修改本单或外传账号密码，妥善保管。");
             sb.AppendLine();
-            sb.AppendLine("激活卡号（授权串，备用/续期）：");
-            sb.AppendLine(e.Card);
+            sb.AppendLine("激活卡号：");
+            sb.AppendLine(card);
             sb.AppendLine();
-            sb.AppendLine("请妥善保管本交付单，勿外传。");
+            sb.AppendLine("注意保密：本交付单包含明文密码。");
             sb.AppendLine("==============================================");
             return sb.ToString();
         }
-
         // ------------------------------------------------------------
-        // 台账（ledger * / list）
+        // ledger list / list
         // ------------------------------------------------------------
 
-        private class LedgerEntry
+        private static int ListLedger(string[] args)
         {
-            public long Seq;
-            public DateTimeOffset IssuedUtc;
-            public string Note = string.Empty;
-            public string Account = string.Empty;
-            public int Days;
-            public string Password = string.Empty;
-            public string Card = string.Empty;
-            public string CardFingerprint = string.Empty;
-        }
-
-        private static long NextSeq(string ledgerPath)
-        {
-            long max = 0;
-            foreach (var entry in ReadLedger(ledgerPath))
-            {
-                if (entry.Seq > max) max = entry.Seq;
-            }
-
-            return max;
-        }
-
-        private static bool AppendLedger(string ledgerPath, LedgerEntry entry)
-        {
-            try
-            {
-                Directory.CreateDirectory(Path.GetDirectoryName(ledgerPath)!);
-                var sb = new StringBuilder();
-                sb.Append("[record]").Append('\n');
-                sb.Append("seq=").Append(entry.Seq.ToString(CultureInfo.InvariantCulture)).Append('\n');
-                sb.Append("issuedUtc=").Append(entry.IssuedUtc.ToString("o", CultureInfo.InvariantCulture)).Append('\n');
-                sb.Append("note=").Append(entry.Note).Append('\n');
-                sb.Append("account=").Append(entry.Account).Append('\n');
-                sb.Append("days=").Append(entry.Days.ToString(CultureInfo.InvariantCulture)).Append('\n');
-                sb.Append("passwordB64=").Append(Convert.ToBase64String(Encoding.UTF8.GetBytes(entry.Password))).Append('\n');
-                sb.Append("card=").Append(entry.Card).Append('\n');
-                sb.Append("cardFingerprint=").Append(entry.CardFingerprint).Append('\n');
-                sb.Append('\n');
-
-                File.AppendAllText(ledgerPath, sb.ToString(), new UTF8Encoding(false));
-                return true;
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-        }
-
-        private static List<LedgerEntry> ReadLedger(string ledgerPath)
-        {
-            var result = new List<LedgerEntry>();
-            if (!File.Exists(ledgerPath))
-            {
-                return result;
-            }
-
-            LedgerEntry? current = null;
-            foreach (var rawLine in File.ReadAllLines(ledgerPath))
-            {
-                var line = rawLine.TrimEnd('\r');
-                if (line == "[record]")
-                {
-                    current = new LedgerEntry();
-                    result.Add(current);
-                    continue;
-                }
-
-                if (current == null || line.Length == 0 || line.StartsWith("#", StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
-                int eq = line.IndexOf('=');
-                if (eq <= 0)
-                {
-                    continue;
-                }
-
-                var key = line.Substring(0, eq);
-                var value = line.Substring(eq + 1);
-                switch (key)
-                {
-                    case "seq":
-                        if (long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var seq)) current.Seq = seq;
-                        break;
-                    case "issuedUtc":
-                        if (DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var d) ) current.IssuedUtc = d;
-                        break;
-                    case "note": current.Note = value; break;
-                    case "account": current.Account = value; break;
-                    case "days":
-                        if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var days)) current.Days = days;
-                        break;
-                    case "passwordB64":
-                        try { current.Password = Encoding.UTF8.GetString(Convert.FromBase64String(value)); }
-                        catch (FormatException) { current.Password = value; }
-                        break;
-                    case "card": current.Card = value; break;
-                    case "cardFingerprint": current.CardFingerprint = value; break;
-                }
-            }
-
-            return result;
-        }
-
-        private static int Ledger(string[] args)
-        {
-            if (args.Length < 2 || !string.Equals(args[1], "list", StringComparison.OrdinalIgnoreCase))
-            {
-                Console.WriteLine("用法：SURS.LicenseTool ledger list [--note 过滤] [--account 过滤] [--full] [--ledger 台账]");
-                return 1;
-            }
-
             var ledger = LedgerPath(args);
             var noteFilter = FindValue(args, "--note");
             var accountFilter = FindValue(args, "--account");
             bool full = HasFlag(args, "--full");
 
-            var entries = ReadLedger(ledger);
-            if (entries.Count == 0)
+            var records = LicenseLedger.Load(ledger);
+            var filtered = LicenseLedger.Filter(records, accountFilter, noteFilter);
+            if (records.Count == 0)
             {
                 Console.WriteLine("（暂无发放记录：" + ledger + "）");
                 return 0;
             }
 
-            Console.WriteLine("发放台账（" + ledger + "）共 " + entries.Count + " 条：");
+            Console.WriteLine("注意保密：台账包含账号明文密码，仅限授权管理员查看。");
+            Console.WriteLine("发放台账（" + ledger + "）共 " + records.Count + " 条，匹配 " + filtered.Count + " 条：");
             Console.WriteLine();
-            foreach (var e in entries)
+            int index = 0;
+            foreach (var record in filtered)
             {
-                if (!string.IsNullOrWhiteSpace(noteFilter) && !(e.Note.Contains(noteFilter, StringComparison.OrdinalIgnoreCase))) continue;
-                if (!string.IsNullOrWhiteSpace(accountFilter) && !(e.Account.Contains(accountFilter, StringComparison.OrdinalIgnoreCase))) continue;
-
-                Console.WriteLine("序号 {0} | {1} | 账号 {2} | {3} 天 | 签发(UTC) {4} | 密码 {5}",
-                    e.Seq, string.IsNullOrEmpty(e.Note) ? "（未填机构）" : e.Note,
-                    e.Account, e.Days, e.IssuedUtc.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture), e.Password);
+                index++;
+                Console.WriteLine("{0} | {1} | 账号 {2} | {3} 天 | 签发(UTC) {4} | 密码 {5}",
+                    index,
+                    string.IsNullOrEmpty(record.Institution) ? "（未填机构）" : record.Institution,
+                    record.Account,
+                    record.Days,
+                    record.IssuedAt.ToUniversalTime().ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture),
+                    record.Password);
                 if (full)
                 {
-                    Console.WriteLine("       卡指纹：" + e.CardFingerprint);
-                    Console.WriteLine("       卡号：" + e.Card);
+                    Console.WriteLine("   卡指纹：" + record.CardFingerprint);
                 }
             }
 
@@ -508,7 +548,6 @@ namespace SURS.LicenseTool
                 throw new ArgumentException("请提供要校验的激活卡号。");
             }
 
-            var card = args[1];
             var publicPath = Path.Combine(KeysDir(args), "public_key.pem");
             if (!File.Exists(publicPath))
             {
@@ -519,10 +558,9 @@ namespace SURS.LicenseTool
 
             using var rsa = RSA.Create();
             rsa.ImportFromPem(File.ReadAllText(publicPath));
-
-            var check = LicenseCrypto.VerifyCard(card, rsa);
-            PrintCardCheck(check);
-            return check.SignatureValid && check.Parsed ? 0 : 1;
+            var check = LicenseCrypto.VerifyCard(args[1], rsa);
+            PrintCardCheck(check, signatureChecked: true);
+            return check.IsFullyValid ? 0 : 1;
         }
 
         private static int Inspect(string[] args)
@@ -533,21 +571,21 @@ namespace SURS.LicenseTool
             }
 
             var check = LicenseCrypto.InspectCard(args[1]);
-            PrintCardCheck(check);
+            PrintCardCheck(check, signatureChecked: false);
             return check.Parsed ? 0 : 1;
         }
 
-        private static void PrintCardCheck(LicenseCardCheck check)
+        private static void PrintCardCheck(LicenseCardCheck check, bool signatureChecked)
         {
             Console.WriteLine("解析成功：" + (check.Parsed ? "是" : "否"));
-            Console.WriteLine("签名有效：" + (check.SignatureValid ? "是" : "否"));
+            Console.WriteLine("签名校验：" + (signatureChecked ? (check.SignatureValid ? "有效" : "无效") : "未校验（inspect 仅解析内容）"));
             if (check.Payload != null)
             {
-                var p = check.Payload;
-                Console.WriteLine("账号：" + p.Account);
-                Console.WriteLine("机构：" + (string.IsNullOrEmpty(p.Note) ? "（未填）" : p.Note));
-                Console.WriteLine("有效天数：" + p.ValidityDays + " 天（自首次激活起算）");
-                Console.WriteLine("签发时间(本地)：" + FormatLocal(new DateTimeOffset(p.IssuedAtUtcTicks, TimeSpan.Zero)));
+                var payload = check.Payload;
+                Console.WriteLine("账号：" + payload.Account);
+                Console.WriteLine("机构：" + (string.IsNullOrEmpty(payload.Note) ? "（未填）" : payload.Note));
+                Console.WriteLine("有效天数：" + payload.ValidityDays + " 天（自首次激活起算）");
+                Console.WriteLine("签发时间(本地)：" + FormatLocal(new DateTimeOffset(payload.IssuedAtUtcTicks, TimeSpan.Zero)));
             }
 
             if (!string.IsNullOrEmpty(check.Error))
@@ -575,8 +613,69 @@ namespace SURS.LicenseTool
         }
 
         // ------------------------------------------------------------
-        // 密码生成
+        // 文本 / 路径 / 密码辅助
         // ------------------------------------------------------------
+
+        private static void EnsureParentDirectory(string path)
+        {
+            var directory = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+        }
+
+        private static void WriteTextAtomic(string path, string content)
+        {
+            var temp = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            try
+            {
+                File.WriteAllText(temp, content, new UTF8Encoding(false));
+                File.Move(temp, path, overwrite: true);
+            }
+            finally
+            {
+                if (File.Exists(temp))
+                {
+                    File.Delete(temp);
+                }
+            }
+        }
+
+        private static string EscapeCsv(string value)
+        {
+            var text = value ?? string.Empty;
+            if (text.IndexOfAny(new[] { ',', '"', '\r', '\n' }) < 0)
+            {
+                return text;
+            }
+
+            return "\"" + text.Replace("\"", "\"\"", StringComparison.Ordinal) + "\"";
+        }
+
+        private static string SanitizeFolderName(string name)
+        {
+            var invalid = Path.GetInvalidFileNameChars();
+            var source = (name ?? string.Empty).Trim();
+            var sb = new StringBuilder(source.Length);
+            foreach (var ch in source)
+            {
+                sb.Append(Array.IndexOf(invalid, ch) >= 0 ? '_' : ch);
+            }
+
+            var result = sb.ToString().Trim();
+            while (result.Contains("__", StringComparison.Ordinal))
+            {
+                result = result.Replace("__", "_", StringComparison.Ordinal);
+            }
+
+            if (result.Length == 0)
+            {
+                return "机构";
+            }
+
+            return result.Length > 30 ? result.Substring(0, 30) : result;
+        }
 
         private static readonly char[] GenLower = "abcdefghjkmnpqrstuvwxyz".ToCharArray();
         private static readonly char[] GenUpper = "ABCDEFGHJKMNPQRSTUVWXYZ".ToCharArray();
@@ -602,7 +701,6 @@ namespace SURS.LicenseTool
                 chars[i] = pool[RandomNumberGenerator.GetInt32(pool.Count)];
             }
 
-            // Fisher-Yates 洗牌
             for (int i = length - 1; i > 0; i--)
             {
                 int j = RandomNumberGenerator.GetInt32(i + 1);

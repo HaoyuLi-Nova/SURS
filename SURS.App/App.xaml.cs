@@ -36,19 +36,23 @@ public partial class App : Application
         {
             _licenseService = new LicenseService(_logger);
             var gate = _licenseService.StartupGate();
-            if (gate.Status == LicenseStatus.Expired)
-            {
-                // 过期后禁止旧授权登录，但保留“输入新卡续期”的唯一入口。
-                _logger.LogWarning("授权已到期，进入续期流程：" + gate.Message);
-                _dialogService.ShowMessage("SURS 授权已到期", gate.Message + "\n\n请使用发放方提供的新卡续期。");
-            }
-            else if (gate.Status != LicenseStatus.Valid && gate.Status != LicenseStatus.NotActivated)
+
+            // 门禁分派：
+            //   Valid / NotActivated / Expired → 进入登录（首次激活/续期）页面；
+            //   其它（Tampered / ClockRollback / StorageError …）→ 提示原因并退出，绝不进入 UI。
+            if (gate.Status is not (LicenseStatus.Valid or LicenseStatus.NotActivated or LicenseStatus.Expired))
             {
                 _logger.LogWarning("启动门禁拒绝进入：" + gate.Status + "；" + gate.Message);
                 _dialogService.ShowError("SURS 授权", gate.Message);
                 Shutdown(1);
                 return;
             }
+
+            if (gate.Status == LicenseStatus.Expired)
+            {
+                _logger.LogWarning("授权已到期，进入续期流程：" + gate.Message);
+            }
+
 
             var loginWindow = new LoginWindow(_licenseService, gate, _logger);
             if (loginWindow.ShowDialog() != true)
@@ -72,10 +76,11 @@ public partial class App : Application
             Shutdown(1);
         }
     }
+
     private void App_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
     {
         _logger.LogError("未处理的 UI 线程异常", e.Exception);
-        _dialogService.ShowError("应用程序错误", 
+        _dialogService.ShowError("应用程序错误",
             $"应用程序发生错误:\n{e.Exception.Message}\n\n详细信息已记录到日志文件。");
         e.Handled = true; // 标记为已处理，防止应用崩溃
     }
@@ -85,7 +90,7 @@ public partial class App : Application
         if (e.ExceptionObject is Exception ex)
         {
             _logger.LogError("未处理的应用程序域异常", ex);
-            _dialogService.ShowError("严重错误", 
+            _dialogService.ShowError("严重错误",
                 $"应用程序发生严重错误:\n{ex.Message}\n\n详细信息已记录到日志文件。");
         }
     }
@@ -110,13 +115,13 @@ public partial class App : Application
         }
 
         var resolvedSource = bindingExpression.ResolvedSource;
-        var resolvedProperty = bindingExpression.ResolvedSourcePropertyName;
-        if (resolvedSource == null || string.IsNullOrWhiteSpace(resolvedProperty))
+        var resolvedSourcePropertyName = bindingExpression.ResolvedSourcePropertyName;
+        if (resolvedSource == null || string.IsNullOrWhiteSpace(resolvedSourcePropertyName))
         {
             return;
         }
 
-        var property = resolvedSource.GetType().GetProperty(resolvedProperty, BindingFlags.Instance | BindingFlags.Public);
+        var property = resolvedSource.GetType().GetProperty(resolvedSourcePropertyName, BindingFlags.Instance | BindingFlags.Public);
         if (property == null || !property.CanWrite)
         {
             return;
@@ -165,4 +170,3 @@ public partial class App : Application
         return null;
     }
 }
-

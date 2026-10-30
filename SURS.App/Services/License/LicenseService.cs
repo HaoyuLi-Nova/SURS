@@ -78,7 +78,10 @@ namespace SURS.App.Services.License
 
     /// <summary>
     /// 授权服务：负责“启动门禁 + 首次激活/续期 + 登录 + 防回拨水印 + 防重置 + 有效期判定 + 本地持久化”。
-    ///
+    /// 交付形态：
+    ///   首次运行显示“激活卡号 + 账号 + 密码”，卡号不会被自动导入；
+    ///   已有有效授权时只显示“账号 + 密码”；
+    ///   到期后进入续期页面，必须输入发放方新签发的卡号、账号和密码。
     /// 语义（v2，纯离线）：
     ///   1) 认证 ≠ 授权：账号密码只验证身份；能否运行由“本机授权状态”决定；
     ///   2) 相对窗口：到期 = 本机首次激活当刻(firstUseUtc) + 卡上 ValidityDays×24h；
@@ -89,10 +92,6 @@ namespace SURS.App.Services.License
     ///      机器指纹(machineFingerprintProvider，默认 MachineGuid) 绑定，
     ///      单卡单机一次性（consumed 台账），有效窗口内一律拒重激活。
     ///
-    /// 交付形态：UI 只有“账号 + 密码”。
-    ///   A 形式：随包 license.card（医院无感，自动读取）＋ 短密码；
-    ///   B 形式：把“授权串 SURS2.xxx”当作密码粘贴（单 exe 场景）。
-    ///   到期后：允许进入登录页的“续期”通道，需输入甲方发的新卡（新 license.card 或新授权串）后方可进入。
     ///
     /// 诚实边界：本方案面向 L1 威胁（改时间、改配置、删数据、换卡蹭 7 天）；
     /// 重装整机/换新机/精心逆向无法由纯离线方案抵抗（属公认天花板）。
@@ -132,7 +131,8 @@ namespace SURS.App.Services.License
             Func<DateTimeOffset>? nowUtc = null,
             bool useRegistryMirror = true,
             string? shadowDirectory = null,
-            Func<string>? machineFingerprintProvider = null)
+            Func<string>? machineFingerprintProvider = null,
+            RSA? verifier = null)
         {
             _logger = logger;
             _storageDir = storageDirectory ?? Path.Combine(
@@ -144,7 +144,7 @@ namespace SURS.App.Services.License
             _nowUtc = nowUtc ?? (() => DateTimeOffset.UtcNow);
             _useRegistryMirror = useRegistryMirror;
             _machineFingerprintProvider = machineFingerprintProvider ?? MachineFingerprint.Compute;
-            _verifier = EmbeddedLicenseKey.CreateVerifierRsa();
+            _verifier = verifier ?? EmbeddedLicenseKey.CreateVerifierRsa();
         }
 
         /// <summary>是否已安装有效授权卡（本机存储里有卡）。</summary>
@@ -158,6 +158,16 @@ namespace SURS.App.Services.License
 
         /// <summary>输入是否为“授权串”样式（以 SURS2. 开头）。</summary>
         public static bool LooksLikeToken(string input) => LicenseCrypto.LooksLikeToken(input);
+
+        /// <summary>
+        /// 判断输入（密码框里的授权串）是否就是本机已安装的卡。
+        /// 用于避免登录页在“激活成功后修正账号”的二次提交里，把同一授权串再激活一次而被“已消费”拒绝。
+        /// </summary>
+        public bool InstalledCardEquals(string token)
+        {
+            return _installedCard != null &&
+                   string.Equals(LicenseCrypto.NormalizeCard(token ?? string.Empty), _installedCard, StringComparison.Ordinal);
+        }
 
         /// <summary>从指定路径读取授权卡内容（规范化后返回；不存在/异常返回 null）。</summary>
         public static string? ReadCardFileOrDefault(string path)
@@ -178,7 +188,36 @@ namespace SURS.App.Services.License
             }
         }
 
-        // ============================================================
+                /// <summary>
+        /// 探测“随发布包放在 exe 同目录”的 license.card（首次激活页预填用）。
+        /// 仅当文件存在且签名有效时返回 (卡片, 账号)；否则返回 (null, null)。
+        /// 本方法只读不写：不写入授权、不消费卡、不改动任何状态与系统时间。
+        /// </summary>
+        public static (string? Card, string? Account) ProbeBundledCard()
+        {
+            var exeDir = Environment.ProcessPath is string p ? Path.GetDirectoryName(p) : null;
+            if (string.IsNullOrEmpty(exeDir))
+            {
+                exeDir = AppContext.BaseDirectory;
+            }
+
+            var path = Path.Combine(exeDir, CardFileName);
+            var card = ReadCardFileOrDefault(path);
+            if (string.IsNullOrEmpty(card))
+            {
+                return (null, null);
+            }
+
+            using var rsa = EmbeddedLicenseKey.CreateVerifierRsa();
+            var check = LicenseCrypto.VerifyCard(card, rsa);
+            if (!check.SignatureValid || check.Payload == null)
+            {
+                return (null, null);
+            }
+
+            return (card, check.Payload.Account);
+        }
+// ============================================================
         // 对外入口
         // ============================================================
 
@@ -195,7 +234,7 @@ namespace SURS.App.Services.License
             {
                 return LicenseCheckResult.Of(
                     LicenseStatus.NotActivated,
-                    message: "本机尚未激活。请将发布文件夹放到程序目录后重新启动；或在下方直接输入发放方提供的账号、密码完成激活。");
+                    message: "本机尚未激活。请在登录页输入发放方提供的激活卡号、账号和密码完成首次激活。");
             }
 
             // 1) 验签（防篡改）
@@ -218,10 +257,58 @@ namespace SURS.App.Services.License
             }
 
             return ValidResult(check.Payload, current!);
-        }        /// <summary>
-        /// 激活/续期：用一张“新授权”在本机开窗。
-        /// 输入的 <paramref name="cardCode"/> 可以是随包 license.card 读出的卡号，也可以是“授权串”（B 形式）。
+        }
+
+        /// <summary>
+        /// 首次激活/续期前预校验：验签并核对卡内账号与 PBKDF2 密码散列。
+        /// 本方法不写任何授权状态，因此密码错误不会消费卡片或开启窗口。
         /// </summary>
+        public LicenseCheckResult ValidateActivationCredentials(string cardCode, string account, string password)
+        {
+            var code = LicenseCrypto.NormalizeCard(cardCode);
+            if (string.IsNullOrEmpty(code))
+            {
+                return LicenseCheckResult.Of(LicenseStatus.InvalidCard, message: "请输入激活卡号。");
+            }
+
+            var check = LicenseCrypto.VerifyCard(code, _verifier);
+            if (check.Payload == null)
+            {
+                return LicenseCheckResult.Of(
+                    LicenseStatus.InvalidCard,
+                    message: "激活卡号无法识别，请确认卡号完整且未混入其它字符。");
+            }
+
+            if (!check.SignatureValid)
+            {
+                _logger?.LogWarning("激活卡签名校验失败：" + (check.Error ?? string.Empty));
+                return LicenseCheckResult.Of(
+                    LicenseStatus.Tampered,
+                    message: "激活卡号无效或已被修改，请联系发放方核发新卡。");
+            }
+
+            var payload = check.Payload;
+            if (!string.Equals(account?.Trim(), payload.Account, StringComparison.Ordinal))
+            {
+                _logger?.LogWarning("激活凭证校验失败：账号不匹配。");
+                return LicenseCheckResult.Of(
+                    LicenseStatus.InvalidCredentials,
+                    payload,
+                    message: "账号或密码错误。");
+            }
+
+            var salt = SafeDecode(payload.PasswordSaltBase64);
+            if (salt == null || !LicenseCrypto.PasswordMatches(password ?? string.Empty, salt, payload.PasswordHashBase64))
+            {
+                _logger?.LogWarning("激活凭证校验失败：密码不匹配。");
+                return LicenseCheckResult.Of(
+                    LicenseStatus.InvalidCredentials,
+                    payload,
+                    message: "账号或密码错误。");
+            }
+
+            return LicenseCheckResult.Of(LicenseStatus.Valid, payload);
+        }
         public LicenseCheckResult TryActivate(string cardCode)
         {
             var code = LicenseCrypto.NormalizeCard(cardCode);
@@ -247,18 +334,49 @@ namespace SURS.App.Services.License
             }
 
             var payload = check.Payload;
+            EnsureLoaded();
             DateTimeOffset now = _nowUtc();
             var machineFp = GetMachineFingerprint();
+            if (string.IsNullOrWhiteSpace(machineFp))
+            {
+                return LicenseCheckResult.Of(
+                    LicenseStatus.StorageError,
+                    message: "无法读取本机识别信息，授权操作已停止。");
+            }
 
             // —— 读取所有可读副本，执行“防重置”检查 ——
             long maxSeq = long.MinValue;
             var survivors = new List<CopyState>();
+            bool hasCorruptCopy = false;
             foreach (var copy in ReadAllCopies())
             {
+                if (copy is { Corrupt: true })
+                {
+                    hasCorruptCopy = true;
+                    continue;
+                }
+
                 if (copy is { Corrupt: false, Exists: true })
                 {
                     survivors.Add(copy);
                 }
+            }
+
+            if (hasCorruptCopy)
+            {
+                _logger?.LogWarning("激活时检测到损坏的授权状态副本。");
+                return LicenseCheckResult.Of(
+                    LicenseStatus.Tampered,
+                    message: "授权状态异常，无法重复激活。请联系发放方处理。");
+            }
+
+            // 已安装卡但所有状态副本都被清空，说明有人试图删档重置。
+            if (_installedCard != null && survivors.Count == 0)
+            {
+                _logger?.LogWarning("检测到授权卡存在但状态副本全部缺失。");
+                return LicenseCheckResult.Of(
+                    LicenseStatus.Tampered,
+                    message: "授权状态缺失，软件已停止使用。请联系发放方处理。");
             }
 
             if (survivors.Count > 0)
@@ -279,7 +397,7 @@ namespace SURS.App.Services.License
                 }
 
                 // 累计台账与活性判断（跨副本、跨代）。
-                var cardFp = LicenseCrypto.CardFingerprint(code);
+                var candidateCardFp = LicenseCrypto.CardFingerprint(code);
                 var consumedAll = new HashSet<string>(StringComparer.Ordinal);
                 bool liveOnThisMachine = false;
                 long wmMax = long.MinValue;
@@ -305,7 +423,7 @@ namespace SURS.App.Services.License
                 }
 
                 // 规则②：单卡单机一次性（台账含历史累计）。
-                if (consumedAll.Contains(cardFp))
+                if (consumedAll.Contains(candidateCardFp))
                 {
                     return LicenseCheckResult.Of(
                         LicenseStatus.Tampered,
@@ -337,13 +455,15 @@ namespace SURS.App.Services.License
             }
 
             var newConsumed = consumedBefore;
-            newConsumed.Add(LicenseCrypto.CardFingerprint(code));
+            var cardFp = LicenseCrypto.CardFingerprint(code);
+            newConsumed.Add(cardFp);
 
             long nextSeq = maxSeq == long.MinValue ? 1L : checked(maxSeq + 1);
             var record = new CopyState
             {
                 Generation = Guid.NewGuid().ToString("N"),
                 DeviceFp = machineFp,
+                ActiveCardFingerprint = cardFp,
                 FirstUseUtcTicks = newFirstUse,
                 LastSeenUtcTicks = now.UtcTicks,
                 LastExpiryUtcTicks = newLastExpiry,
@@ -414,20 +534,10 @@ namespace SURS.App.Services.License
                     LicenseStatus.InvalidCredentials, message: "账号或密码错误。");
             }
 
-            bool passwordOk;
-            if (LicenseCrypto.LooksLikeToken(password ?? string.Empty))
-            {
-                // B 形式：密码即授权串 => 与本机已装卡逐字比对。
-                var tokenNorm = LicenseCrypto.NormalizeCard(password ?? string.Empty);
-                passwordOk = string.Equals(tokenNorm, _installedCard, StringComparison.Ordinal);
-            }
-            else
-            {
-                // A 形式：短密码 => PBKDF2 校验。
-                var salt = SafeDecode(payload.PasswordSaltBase64);
-                passwordOk = salt != null &&
-                             LicenseCrypto.PasswordMatches(password ?? string.Empty, salt, payload.PasswordHashBase64);
-            }
+            // 每次启动只接受卡内 PBKDF2 散列对应的账号密码，不再接受把卡号当作密码。
+            var salt = SafeDecode(payload.PasswordSaltBase64);
+            bool passwordOk = salt != null &&
+                              LicenseCrypto.PasswordMatches(password ?? string.Empty, salt, payload.PasswordHashBase64);
 
             if (!passwordOk)
             {
@@ -491,6 +601,23 @@ namespace SURS.App.Services.License
             if (best.FirstUseUtcTicks <= 0 || best.LastExpiryUtcTicks <= 0)
             {
                 _logger?.LogWarning("授权窗口时间字段异常。");
+                return LicenseStatus.Tampered;
+            }
+
+            // 机器指纹与当前安装卡的指纹必须同时匹配，防止把整套状态复制到另一台电脑，
+            // 也防止用新卡文件配合回放的旧状态副本重置窗口。
+            var machineFp = GetMachineFingerprint();
+            if (string.IsNullOrWhiteSpace(machineFp) || survivors.Exists(s => !string.Equals(s.DeviceFp, machineFp, StringComparison.Ordinal)))
+            {
+                _logger?.LogWarning("授权状态与本机指纹不匹配。");
+                return LicenseStatus.Tampered;
+            }
+
+            var installedFp = _installedCard == null ? string.Empty : LicenseCrypto.CardFingerprint(_installedCard);
+            if (string.IsNullOrEmpty(installedFp) ||
+                !string.Equals(best.ActiveCardFingerprint, installedFp, StringComparison.Ordinal))
+            {
+                _logger?.LogWarning("本机授权卡与状态记录不匹配（可能回放了旧代状态）。");
                 return LicenseStatus.Tampered;
             }
 
@@ -802,6 +929,7 @@ namespace SURS.App.Services.License
 
             public string Generation = string.Empty;
             public string DeviceFp = string.Empty;
+            public string ActiveCardFingerprint = string.Empty;
             public long FirstUseUtcTicks;
             public long LastSeenUtcTicks;
             public long LastExpiryUtcTicks;
@@ -816,6 +944,7 @@ namespace SURS.App.Services.License
                 Exists = true,
                 Generation = source.Generation,
                 DeviceFp = source.DeviceFp,
+                ActiveCardFingerprint = source.ActiveCardFingerprint,
                 FirstUseUtcTicks = source.FirstUseUtcTicks,
                 LastSeenUtcTicks = lastSeen,
                 LastExpiryUtcTicks = source.LastExpiryUtcTicks,
@@ -840,6 +969,7 @@ namespace SURS.App.Services.License
                 "v=" + StateSchemeVersion.ToString(CultureInfo.InvariantCulture),
                 "gen=" + s.Generation,
                 "fp=" + s.DeviceFp,
+                "activeFp=" + s.ActiveCardFingerprint,
                 "firstUse=" + s.FirstUseUtcTicks.ToString(CultureInfo.InvariantCulture),
                 "lastSeen=" + s.LastSeenUtcTicks.ToString(CultureInfo.InvariantCulture),
                 "lastExpiry=" + s.LastExpiryUtcTicks.ToString(CultureInfo.InvariantCulture),
@@ -852,7 +982,7 @@ namespace SURS.App.Services.License
         {
             var allowed = new HashSet<string>
             {
-                "v", "gen", "fp", "firstUse", "lastSeen", "lastExpiry", "seq", "consumed"
+                "v", "gen", "fp", "activeFp", "firstUse", "lastSeen", "lastExpiry", "seq", "consumed"
             };
 
             var fields = new Dictionary<string, string>();
@@ -886,6 +1016,7 @@ namespace SURS.App.Services.License
 
             if (!fields.TryGetValue("gen", out var gen) || string.IsNullOrEmpty(gen) ||
                 !fields.TryGetValue("fp", out var fp) || string.IsNullOrEmpty(fp) ||
+                !fields.TryGetValue("activeFp", out var activeFp) || string.IsNullOrEmpty(activeFp) ||
                 !fields.TryGetValue("firstUse", out var firstUse) ||
                 !long.TryParse(firstUse, NumberStyles.Integer, CultureInfo.InvariantCulture, out var firstUseTicks) ||
                 !fields.TryGetValue("lastSeen", out var lastSeen) ||
@@ -905,6 +1036,7 @@ namespace SURS.App.Services.License
 
             target.Generation = gen;
             target.DeviceFp = fp;
+            target.ActiveCardFingerprint = activeFp;
             target.FirstUseUtcTicks = firstUseTicks;
             target.LastSeenUtcTicks = lastSeenTicks;
             target.LastExpiryUtcTicks = lastExpiryTicks;
